@@ -1,0 +1,14 @@
+# Arduino et ESP32
+build/
+bin/
+*.hex
+*.elf
+*.bin
+
+# Bibliothèques locales (souvent installées dans l'IDE)
+libraries/
+
+# Fichiers système et IDE
+.vscode/
+.DS_Store
+Thumbs.db
