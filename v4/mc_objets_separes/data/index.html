@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Architecture Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div id="envBadge" class="badge">Initialisation...</div>
+            <h1>ESP32 Control Center</h1>
+            <div class="status-badge">Système Actif</div>
+			<small id="timerNext">MàJ dans : --s</small>
+        </header>
+        
+        <main class="card">
+            <section class="info-section">
+                <p>Serveur : <strong>LittleFS</strong></p>
+                <div class="data-display">
+                    Température : <span id="tempValue">--</span>°C | 
+                    à : <span id="dateValue">--</span> h
+                </div>
+            </section>
+
+            <hr>
+
+            <section class="action-section">
+                <button id="actionBtn" class="btn">Action LED</button>
+                <p id="responseField"></p>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
