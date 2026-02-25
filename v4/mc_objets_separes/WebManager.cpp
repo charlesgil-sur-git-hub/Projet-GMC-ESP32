@@ -1,11 +1,12 @@
 #include "WebManager.h"
+#include <WiFi.h>  
 #include <ArduinoJson.h>
 
 // On n'oublie pas de dire que dao existe ailleurs
 extern DaoGMC* dao; 
 
 WebManager::WebManager(WebServer& server, ConfigManager* config) 
-    : _server(server), _config(config) {}
+    : _webServer(server), _configManager(config) {}
 
 bool WebManager::begin() {
    Serial.println("Tentative de montage de LittleFS...");
@@ -35,39 +36,39 @@ bool WebManager::begin() {
 
 void WebManager::setupRoutes() {
     // --- 1. L'URL pour les HUMAINS ---
-    _server.on("/config", HTTP_GET, [this]() {
+    _webServer.on("/config", HTTP_GET, [this]() {
         File file = LittleFS.open("/config.html", "r");
         if (file) {
-            _server.streamFile(file, "text/html");
+            _webServer.streamFile(file, "text/html");
             file.close();
         } else {
-            _server.send(404, "text/plain", "Fichier config.html manquant");
+            _webServer.send(404, "text/plain", "Fichier config.html manquant");
         }
     });
 
     // --- 2. L'URL pour la MACHINE (API) ---
     // En GET : On envoie les données
-    _server.on("/api/config", HTTP_GET, [this]() {
+    _webServer.on("/api/config", HTTP_GET, [this]() {
         String json = "{";
-        json += "\"ssid\":\"" + _config->getSSID() + "\",";
-        json += "\"freq\":" + String(_config->getFreq()) + ",";
-        json += "\"mode\":\"" + _config->getMode() + "\"";
+        json += "\"ssid\":\"" + _configManager->getSSID() + "\",";
+        json += "\"freq\":" + String(_configManager->getFreq()) + ",";
+        json += "\"mode\":\"" + _configManager->getMode() + "\"";
         json += "}";
-        _server.send(200, "application/json", json);
+        _webServer.send(200, "application/json", json);
     });
 
     // En POST : On reçoit et on enregistre
-    _server.on("/api/config", HTTP_POST, [this]() {
+    _webServer.on("/api/config", HTTP_POST, [this]() {
         // Sauvegarde via les arguments du formulaire reçu
-        _config->save(
-            _server.arg("ssid"),
-            _server.arg("pass"),
-            _server.arg("freq").toInt(),
-            _server.arg("mode")
+        _configManager->save(
+            _webServer.arg("ssid"),
+            _webServer.arg("pass"),
+            _webServer.arg("freq").toInt(),
+            _webServer.arg("mode")
         );
         
         // On répond au JavaScript avant de couper la connexion
-        _server.send(200, "application/json", "{\"status\":\"success\"}");
+        _webServer.send(200, "application/json", "{\"status\":\"success\"}");
         
         Serial.println("Config mise à jour. Redémarrage...");
         delay(2000);
@@ -75,7 +76,7 @@ void WebManager::setupRoutes() {
     });
     
     // Route API JSON : On va chercher la      VRAIE dernière mesure !
-    _server.on("/api/status", HTTP_GET, [this]() {
+    _webServer.on("/api/status", HTTP_GET, [this]() {
         JsonDocument doc; 
         
         // --- CONNEXION À LA DAO LIGHT ---
@@ -97,27 +98,27 @@ void WebManager::setupRoutes() {
 
         String response;
         serializeJson(doc, response);
-        _server.send(200, "application/json", response);
+        _webServer.send(200, "application/json", response);
     });
 
     // Gestion des fichiers statiques (index.html, etc.)
-    _server.onNotFound([this]() {
-        if (!handleFileRead(_server.uri())) {
-            _server.send(404, "text/plain", "Fichier introuvable sur LittleFS");
+    _webServer.onNotFound([this]() {
+        if (!handleFileRead(_webServer.uri())) {
+            _webServer.send(404, "text/plain", "Fichier introuvable sur LittleFS");
         }
     });
 
     //!synchroniserHorlogeAuSetup
-    _server.on("/api/sync_time", HTTP_GET, [this]() {
-        if (_server.hasArg("t")) {
-            time_t t = _server.arg("t").toInt();
+    _webServer.on("/api/sync_time", HTTP_GET, [this]() {
+        if (_webServer.hasArg("t")) {
+            time_t t = _webServer.arg("t").toInt();
             struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
             settimeofday(&tv, NULL); // L'ESP32 est maintenant pile à l'heure du PC !
-            _server.send(200, "text/plain", "OK");
+            _webServer.send(200, "text/plain", "OK");
         }
     });
 
-    _server.on("/api/history", HTTP_GET, [this]() {
+    _webServer.on("/api/history", HTTP_GET, [this]() {
         // Utilisation d'un document assez large pour 120 mesures
         JsonDocument doc; 
         JsonArray history = doc.to<JsonArray>();
@@ -133,10 +134,10 @@ void WebManager::setupRoutes() {
 
         String response;
         serializeJson(doc, response);
-        _server.send(200, "application/json", response);
+        _webServer.send(200, "application/json", response);
     });
     
-    _server.on("/api/led", HTTP_GET, [this]() {
+    _webServer.on("/api/led", HTTP_GET, [this]() {
         // 1. Lire l'état actuel et l'inverser
         int etatActuel = digitalRead(2); // On lit le GPIO 2
         int nouvelEtat = !etatActuel;
@@ -148,7 +149,7 @@ void WebManager::setupRoutes() {
         
         String response;
         serializeJson(doc, response);
-        _server.send(200, "application/json", response);
+        _webServer.send(200, "application/json", response);
     });
 }
 
@@ -166,9 +167,57 @@ bool WebManager::handleFileRead(String path) {
 
     if (LittleFS.exists(path)) {
         File file = LittleFS.open(path, "r");
-        _server.streamFile(file, contentType);
+        _webServer.streamFile(file, contentType);
         file.close();
         return true;
     }
     return false;
+}
+
+//******   WIFI    **////
+/**
+    @brief Mode Debug home Box Oui/Non
+*/
+#define DEBUG_HOME_BOX   
+//! identifiants de Box (pour le mode Station)
+#define DEBUG_HOME_BOX_SSID     "Freebox_34F871"
+#define DEBUG_HOME_BOX_PWD      "touballoles"
+
+void WebManager::setupNetwork() {
+    Serial.println("--- Configuration Réseau Dynamique ---");
+    
+    if (_configManager->getMode() == "solo") { 
+        Serial.printf("Mode SOLO - AP: %s\n", _configManager->getSSID().c_str());
+        WiFi.softAPdisconnect(true); 
+        
+        #ifdef DEBUG_HOME_BOX 
+            WiFi.mode(WIFI_AP_STA); // Mode Hybride
+        #else
+            WiFi.mode(WIFI_AP); 
+        #endif
+        
+        delay(100);
+        
+        String pass = _configManager->getPassword();
+        const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
+
+        if (WiFi.softAP(_configManager->getSSID().c_str(), passStr)) {
+            Serial.print("Point d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
+        }
+
+        #ifdef DEBUG_HOME_BOX 
+            WiFi.begin(DEBUG_HOME_BOX_SSID, DEBUG_HOME_BOX_PWD);
+            int retry = 0;
+            while (WiFi.status() != WL_CONNECTED && retry < 20) { delay(500); Serial.print("."); retry++; }
+            if(WiFi.status() == WL_CONNECTED) {
+                Serial.print("\nConnecté Box! IP: "); Serial.println(WiFi.localIP());
+            }
+        #endif
+
+    } else {
+        Serial.printf("Mode CLUSTER - Connexion à: %s\n", _configManager->getSSID().c_str());
+        WiFi.begin(_configManager->getSSID().c_str(), _configManager->getPassword().c_str());
+        int retry = 0;
+        while (WiFi.status() != WL_CONNECTED && retry < 20) { delay(500); Serial.print("."); retry++; }
+    }
 }

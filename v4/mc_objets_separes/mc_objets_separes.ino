@@ -6,7 +6,7 @@
 *
 *   
 *  @author :cgil - @2026
-* @version : v4 - Modulable & Configurable
+* @version : v4.1 - Modulable & Configurable
  * @details : Utilisation de ConfigManager pour supprimer les constantes en dur
             Reset usine si bouton BOOT pressé au démarrage
 *  
@@ -24,6 +24,8 @@
         - Mise en place d'un buffer circulaire de 120 mesures (1 heure de données).
 
         - Synchronisation automatique de l'heure du navigateur vers l'ESP32.
+
+        - V4.1 : Pour Debug Wifi en mode Hybride
 
 *
 *
@@ -65,8 +67,6 @@ CONFIGURATION DU MODE RESEAU :
 */
 
 
-
-
 /**
 *  \brief : classe NetworkManagerGMC inline
 * 
@@ -103,8 +103,40 @@ void checkFactoryReset(); //! Gère le Reset Usine
 
 
 
-
 void setup() {
+    // --- ÉTAPE 1 : BOOT & CONFIG ---
+    setLED(128, 40, 0); // Orange
+    Serial.begin(115200);
+    configManager = new ConfigManager();
+    configManager->begin();
+    
+    // Reset usine (Bouton BOOT)
+    pinMode(0, INPUT_PULLUP);
+    if (digitalRead(0) == LOW) configManager->factoryReset();
+
+    // --- ÉTAPE 2 : HORLOGE & DAO ---
+    so = new SetupOn();
+    so->synchroniserHorlogeAuSetup();
+    dao = new DaoGMC("/littlefs/gmc.db");
+    dao->begin();
+
+    // --- ÉTAPE 3 : RÉSEAU & WEB (Le coeur du système) ---
+    setLED(128, 0, 128); // Violet
+    webManager = new WebManager(server, configManager);
+    
+    if (webManager->begin()) {
+        webManager->setupNetwork(); 
+        webManager->setupRoutes();
+        server.begin();
+        Serial.println("Système Réseau & Web : OK");
+    }
+
+    // --- FIN : PRÊT ---
+    setLED(0, 128, 0); // Vert
+}
+
+
+void setupv4() {
     // --- ÉTAPE 1.1 : ORANGE (BOOT)  & CONFIG ---
     setLED(128, 40, 0); // Orange
     delay(2000); // Pour voir la couleur
@@ -156,10 +188,16 @@ void setup() {
    // --- ÉTAPE 4 : VIOLET : RÉSEAU DYNAMIQUE ---
     setLED(128, 0, 128); // Violet
    // On récupère le mode et les identifiants depuis l'objet config
-    if (configManager->getMode() == "solo") {
+    if (configManager->getMode() == "solo") { 
         Serial.printf("Mode SOLO - AP: %s\n", configManager->getSSID().c_str());
         WiFi.softAPdisconnect(true); // On coupe les anciennes connexions
-        WiFi.mode(WIFI_AP);          // ON FORCE LE MODE ACCESS POINT
+        
+        #ifdef DEBUG_HOME_BOX   //! ==> Mode Hybride Wifi pour tests internes
+            // Configurer le mode HYBRIDE (Access Point + Station)
+            WiFi.mode(WIFI_AP_STA);
+        #else
+            WiFi.mode(WIFI_AP);          // ON FORCE LE MODE ACCESS POINT
+        #endif
         delay(100);                  // Petit temps de pause pour la puce WiFi
         
         //! Sécurité : si le mot de passe est trop court, on passe en réseau ouvert
@@ -178,6 +216,23 @@ void setup() {
         } else {
             Serial.println("Échec de création du Point d'accès !");
         }
+
+        // Connexion à votre Box (STA)
+        #ifdef DEBUG_HOME_BOX   //! ==> Mode Hybride Wifi pour tests internes
+        WiFi.begin(DEGUB_HOME_BOX_SSID, DEGUB_HOME_BOX_PWD);
+        int retry = 0;
+        while (WiFi.status() != WL_CONNECTED && retry < 20) {
+            delay(500);
+            Serial.print(".");
+            retry++;
+        }
+        if(WiFi.status() == WL_CONNECTED) {
+            Serial.println("\nConnecté à la Box !");
+            Serial.print("IP via la Box : "); Serial.println(WiFi.localIP());
+        } else {
+            Serial.println("\nÉchec connexion Box (mais le mode AP reste actif)");
+        }
+        #endif
 
     } else {
         Serial.printf("Mode CLUSTER - Connexion à: %s\n", configManager->getSSID().c_str());

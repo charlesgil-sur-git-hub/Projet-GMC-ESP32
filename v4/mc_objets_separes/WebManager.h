@@ -20,11 +20,12 @@ class WebManager {
 public:
     WebManager(WebServer& server, ConfigManager* config);
     bool begin();
+    void setupNetwork(); //! Wifi
     void setupRoutes();
 
 private:
-    WebServer& _server;
-    ConfigManager* _config; // On stocke une référence à la config
+    WebServer& _webServer;
+    ConfigManager* _configManager; // On stocke une référence à la config
     
     // Handlers pour les requêtes
     void handleRoot();      // Pour afficher la page d'accueil
