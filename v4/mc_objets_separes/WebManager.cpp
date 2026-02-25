@@ -246,7 +246,13 @@ void WebManager::setupNetwork() {
 
             if(WiFi.status() == WL_CONNECTED) {
                 Serial.println("\n[OK] Connecté à la Box !");
-                Serial.print("IP Station : "); Serial.println(WiFi.localIP());
+                //Serial.print("IP Station : "); Serial.println(WiFi.localIP());
+                Serial.println("   RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
+                Serial.println("========================================");
+                Serial.printf(" 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
+                Serial.printf(" 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
+                Serial.println("========================================\n");
+
             } else {
                 Serial.println("\n[ERREUR] Box introuvable ou mauvais mot de passe.");
                 haltSystem(); // On bloque en rouge

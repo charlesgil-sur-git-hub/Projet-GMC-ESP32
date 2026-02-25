@@ -60,29 +60,7 @@ function refreshData() {
     }
 }
 
-function refreshData_OLD() {
-    if (isLocal) {
-        // MODE TEST (PC/Ubuntu)
-        const fakeData = { temp: 22.5, date: "09/03/2026 10:03:45", led_status: "OFF", uptime: null };
-        displayData(fakeData);
-        console.log("Données simulées affichées.");
-    } else {
-        // MODE RÉEL (ESP32)
-        fetch('/api/status')
-            .then(response => {
-                if (!response.ok) throw new Error("Erreur réseau");
-                return response.json();
-            })
-            .then(data => {
-                displayData(data);
-                console.log("Données ESP32 reçues :", data);
-            })
-            .catch(err => {
-                document.getElementById('responseField').innerText = "Erreur : ESP32 injoignable";
-                console.error(err);
-            });
-    }
-}
+
 
 // 4. Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', () => {
