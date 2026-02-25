@@ -76,14 +76,6 @@ CONFIGURATION DU MODE RESEAU :
 *      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
 */
 
-/**
-    @brief Mode Debug home Box Oui/Non
-*/
-#define DEBUG_HOME_BOX   
-//! identifiants de Box (pour le mode Station)
-#define DEBUG_HOME_BOX_SSID     "Freebox_34F871"
-#define DEBUG_HOME_BOX_PWD      "touballoles"
-
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -92,7 +84,7 @@ CONFIGURATION DU MODE RESEAU :
 #include "mesure.h"
 #include "setup_on.h"
 #include "ConfigManager.h" 
-
+#include "debugGmc.h"
 
 // Objets globaux via pointeurs
 ConfigManager* configManager=nullptr; 
@@ -148,135 +140,6 @@ void setup() {
 }
 
 
-void setupv4() {
-    // --- ÉTAPE 1.1 : ORANGE (BOOT)  & CONFIG ---
-    setLED(128, 40, 0); // Orange
-    delay(2000); // Pour voir la couleur
-
-    //! --- ÉTAPE 1.2 : preparer le moniteur serie
-    Serial.begin(115200);
-    delay(1000);
-
-    unsigned long start = millis();
-    while (!Serial && (millis() - start < 3000));
-    Serial.println("\n--- DEMARRAGE SYSTEME GMC V4---");
-    setLED(192, 40, 0);
-    delay(2000); 
-
-    //! --- ÉTAPE 1.2.1 : Initialisation de la config
-    // Initialisation de la configuration (Lecture Flash NVS)
-    configManager = new ConfigManager();
-    configManager->begin();
-    Serial.printf("ID UNIQUE ESP32 : %s\n", configManager->getSSID().c_str());
-    
-    // Reset usine si bouton BOOT pressé au démarrage
-    pinMode(0, INPUT_PULLUP);
-    if (digitalRead(0) == LOW) {
-        setLED(255, 0, 0); // Rouge Flash
-        configManager->factoryReset(); 
-    }
-
-    //! --- ÉTAPE 1.3 : synchro horloge
-    Serial.println("Synchronisation horloge ... "); 
-    so = new SetupOn(); 
-    if (so->synchroniserHorlogeAuSetup())
-        Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
-    else
-        Serial.println(">>> ! Erreur de synchro Horloge ESP32");
-    setLED(64, 40, 0);
-    delay(2000); 
-
-
-   // --- ÉTAPE 2 : BLEU (DATABASE / DAO) ---
-    setLED(0, 0, 128); // Bleu
-   Serial.println("Initialisation DAO (Preferences)...");
-   dao = new DaoGMC("/littlefs/gmc.db");
-   if (dao->begin()) {
-       Serial.println("DAO Init: OK");
-   }
-   delay(2000); // Pour voir la couleur
-
-
-   // --- ÉTAPE 4 : VIOLET : RÉSEAU DYNAMIQUE ---
-    setLED(128, 0, 128); // Violet
-   // On récupère le mode et les identifiants depuis l'objet config
-    if (configManager->getMode() == "solo") { 
-        Serial.printf("Mode SOLO - AP: %s\n", configManager->getSSID().c_str());
-        WiFi.softAPdisconnect(true); // On coupe les anciennes connexions
-        
-        #ifdef DEBUG_HOME_BOX   //! ==> Mode Hybride Wifi pour tests internes
-            // Configurer le mode HYBRIDE (Access Point + Station)
-            WiFi.mode(WIFI_AP_STA);
-        #else
-            WiFi.mode(WIFI_AP);          // ON FORCE LE MODE ACCESS POINT
-        #endif
-        delay(100);                  // Petit temps de pause pour la puce WiFi
-        
-        //! Sécurité : si le mot de passe est trop court, on passe en réseau ouvert
-        String pass = configManager->getPassword();
-        const char* passStr = pass.c_str();
-        // Sécurité : si le mot de passe est trop court, on passe en réseau ouvert
-        if (pass.length() < 8) {
-            Serial.println("ATTENTION : Mot de passe trop court (<8). Passage en mode OUVERT.");
-            passStr = NULL; 
-        }
-
-        bool success = WiFi.softAP(configManager->getSSID().c_str(), passStr);
-        if(success) {
-            Serial.print("Point d'accès créé avec succès. IP : ");
-            Serial.println(WiFi.softAPIP());
-        } else {
-            Serial.println("Échec de création du Point d'accès !");
-        }
-
-        // Connexion à votre Box (STA)
-        #ifdef DEBUG_HOME_BOX   //! ==> Mode Hybride Wifi pour tests internes
-        WiFi.begin(DEGUB_HOME_BOX_SSID, DEGUB_HOME_BOX_PWD);
-        int retry = 0;
-        while (WiFi.status() != WL_CONNECTED && retry < 20) {
-            delay(500);
-            Serial.print(".");
-            retry++;
-        }
-        if(WiFi.status() == WL_CONNECTED) {
-            Serial.println("\nConnecté à la Box !");
-            Serial.print("IP via la Box : "); Serial.println(WiFi.localIP());
-        } else {
-            Serial.println("\nÉchec connexion Box (mais le mode AP reste actif)");
-        }
-        #endif
-
-    } else {
-        Serial.printf("Mode CLUSTER - Connexion à: %s\n", configManager->getSSID().c_str());
-        WiFi.begin(configManager->getSSID().c_str(), configManager->getPassword().c_str());
-        
-        int retry = 0;
-        while (WiFi.status() != WL_CONNECTED && retry < 20) {
-            delay(500); Serial.print("."); retry++;
-        }
-    }
-    Serial.println("\nReseau OK.");
-   delay(500); // Pour voir la couleur
-
-
-    //! --- ÉTAPE 5 : SERVEUR WEB --- 
-   webManager = new WebManager(server, configManager);
-   // AJOUTE CETTE LIGNE ICI :
-   if (webManager->begin()) {
-        webManager->setupRoutes();
-         server.begin();
-       Serial.println("WebManager : LittleFS chargé avec succès !");
-   } else {
-       Serial.println("WebManager : Erreur critique LittleFS !");
-       exit(-2);
-   }
-  
-
-   // --- ÉTAPE fin : FLASH VERT (PRÊT) ---
-   setLED(0, 128, 0);
-   delay(1000);
-  
-}
 
 void loop() {
     // 1. Gérer les requêtes Web (Toujours en priorité)
@@ -377,7 +240,6 @@ void panic(String message) {
         setLED(255, 0, 0); delay(500);
         setLED(0, 0, 0);   delay(500);
         Serial.println("❌ mode panic ...");
-
     }
 }
  

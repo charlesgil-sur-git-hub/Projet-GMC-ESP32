@@ -12,6 +12,7 @@
 #include <LittleFS.h>
 #include "daoGmc.h" // Ajouté pour que le manager connaisse la DAO
 #include "ConfigManager.h"
+#include "debugGmc.h"
 
 // On indique au compilateur que l'objet dao est défini dans le fichier principal
 extern DaoGMC* dao; 
