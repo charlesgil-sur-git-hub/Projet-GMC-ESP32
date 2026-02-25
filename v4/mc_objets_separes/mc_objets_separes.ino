@@ -76,6 +76,14 @@ CONFIGURATION DU MODE RESEAU :
 *      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
 */
 
+/**
+    @brief Mode Debug home Box Oui/Non
+*/
+#define DEBUG_HOME_BOX   
+//! identifiants de Box (pour le mode Station)
+#define DEBUG_HOME_BOX_SSID     "Freebox_34F871"
+#define DEBUG_HOME_BOX_PWD      "touballoles"
+
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -100,7 +108,7 @@ SetupOn* so = nullptr;
 void gestionMesures(); //! Simule ou enregistre une mesure
 void setLED(uint8_t r, uint8_t g, uint8_t b); //! simplifier les couleurs
 void checkFactoryReset(); //! Gère le Reset Usine
-
+void panic(String message);
 
 
 void setup() {
@@ -112,7 +120,8 @@ void setup() {
     
     // Reset usine (Bouton BOOT)
     pinMode(0, INPUT_PULLUP);
-    if (digitalRead(0) == LOW) configManager->factoryReset();
+    if (digitalRead(0) == LOW) 
+        configManager->factoryReset();
 
     // --- ÉTAPE 2 : HORLOGE & DAO ---
     so = new SetupOn();
@@ -129,6 +138,9 @@ void setup() {
         webManager->setupRoutes();
         server.begin();
         Serial.println("Système Réseau & Web : OK");
+    } else {
+        // SI LE FILESYSTEM NE MONTE PAS, ON ARRÊTE TOUT ICI !
+        panic("Echec initialisation LittleFS / WebManager");
     }
 
     // --- FIN : PRÊT ---
@@ -348,3 +360,24 @@ void setLED(uint8_t r, uint8_t g, uint8_t b) {
    neopixelWrite(RGB_BUILTIN, r, g, b);
 }
 
+/**
+@brief fonction panic() qui allume la LED en rouge et bloque tout
+*/
+// --- FONCTION DE SÉCURITÉ GLOBALE ---
+void panic(String message) {
+    setLED(255, 0, 0); // Passage immédiat au ROUGE
+    Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    Serial.print("!!! ERREUR CRITIQUE : ");
+    Serial.println(message);
+    Serial.println("!!! SYSTÈME HALTÉ (BOUCLE INFINIE)");
+    Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    
+    while(true) {
+        // Optionnel : faire clignoter la LED rouge pour attirer l'attention
+        setLED(255, 0, 0); delay(500);
+        setLED(0, 0, 0);   delay(500);
+        Serial.println("❌ mode panic ...");
+
+    }
+}
+ 

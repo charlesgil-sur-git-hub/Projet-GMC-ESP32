@@ -175,15 +175,91 @@ bool WebManager::handleFileRead(String path) {
 }
 
 //******   WIFI    **////
-/**
-    @brief Mode Debug home Box Oui/Non
-*/
-#define DEBUG_HOME_BOX   
-//! identifiants de Box (pour le mode Station)
-#define DEBUG_HOME_BOX_SSID     "Freebox_34F871"
-#define DEBUG_HOME_BOX_PWD      "touballoles"
 
 void WebManager::setupNetwork() {
+    Serial.println("\n--- Configuration Réseau Dynamique ---");
+    
+    // On part du principe que la LED est déjà Violette/Orange à ce stade
+    
+    if (_configManager->getMode() == "solo") { 
+        Serial.printf("Mode SOLO - AP: %s\n", _configManager->getSSID().c_str());
+        
+        // Nettoyage avant config
+        WiFi.softAPdisconnect(true); 
+        WiFi.disconnect(true);
+        delay(200);
+
+        #ifdef DEBUG_HOME_BOX 
+            WiFi.mode(WIFI_AP_STA); // Mode Hybride
+        #else
+            WiFi.mode(WIFI_AP); 
+        #endif
+        
+        delay(100);
+        
+        // --- 1. CONFIGURATION DU POINT D'ACCÈS (AP) ---
+        String pass = _configManager->getPassword();
+        const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
+
+        if (WiFi.softAP(_configManager->getSSID().c_str(), passStr)) {
+            Serial.print("Point d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
+        } else {
+            Serial.println("ERREUR : Échec création AP.");
+            haltSystem(); // On bloque en rouge
+        }
+
+        // --- 2. CONNEXION À LA BOX (Si Debug actif) ---
+        #ifdef DEBUG_HOME_BOX 
+            Serial.printf("Connexion box : %s ", DEBUG_HOME_BOX_SSID);
+            WiFi.begin(DEBUG_HOME_BOX_SSID, DEBUG_HOME_BOX_PWD);
+            
+            int retry = 0;
+            // On attend 15 secondes max (30 * 500ms)
+            while (WiFi.status() != WL_CONNECTED && retry < 30) { 
+                delay(500); 
+                Serial.print("."); 
+                retry++; 
+            }
+
+            if(WiFi.status() == WL_CONNECTED) {
+                Serial.println("\n[OK] Connecté à la Box !");
+                Serial.print("IP Station : "); Serial.println(WiFi.localIP());
+            } else {
+                Serial.println("\n[ERREUR] Box introuvable ou mauvais mot de passe.");
+                haltSystem(); // On bloque en rouge
+            }
+        #endif
+
+    } else {
+        // --- MODE CLUSTER ---
+        Serial.printf("Mode CLUSTER - Connexion à: %s\n", _configManager->getSSID().c_str());
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(_configManager->getSSID().c_str(), _configManager->getPassword().c_str());
+        
+        int retry = 0;
+        while (WiFi.status() != WL_CONNECTED && retry < 30) { 
+            delay(500); Serial.print("."); retry++; 
+        }
+
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("\n[ERREUR] Impossible de joindre le Cluster.");
+            haltSystem();
+        }
+        Serial.println("\n[OK] Connecté au Cluster !");
+    }
+}
+
+// Fonction utilitaire pour bloquer le système en cas d'erreur
+void WebManager::haltSystem() {
+    setLED(255, 0, 0); // ROUGE
+    Serial.println("\n❌  SYSTÈME BLOQUÉ - ERREUR RÉSEAU !!!");
+    while (true) {
+        delay(1000); 
+    }
+}
+
+
+void WebManager::setupNetworkOLD() {
     Serial.println("--- Configuration Réseau Dynamique ---");
     
     if (_configManager->getMode() == "solo") { 
@@ -206,6 +282,7 @@ void WebManager::setupNetwork() {
         }
 
         #ifdef DEBUG_HOME_BOX 
+            Serial.printf("\nConnexion box : ssid[%s] - pwd[%s]\n", DEBUG_HOME_BOX_SSID, DEBUG_HOME_BOX_PWD);
             WiFi.begin(DEBUG_HOME_BOX_SSID, DEBUG_HOME_BOX_PWD);
             int retry = 0;
             while (WiFi.status() != WL_CONNECTED && retry < 20) { delay(500); Serial.print("."); retry++; }

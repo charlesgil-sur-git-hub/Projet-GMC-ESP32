@@ -22,6 +22,7 @@ public:
     bool begin();
     void setupNetwork(); //! Wifi
     void setupRoutes();
+    void haltSystem(); // bloquer le système en cas d'erreur
 
 private:
     WebServer& _webServer;
