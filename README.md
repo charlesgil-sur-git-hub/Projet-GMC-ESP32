@@ -6,7 +6,9 @@ L'architecture a été conçue pour être pédagogique, robuste et performante.
 ## 🚀 Évolution du Projet
 * **V0 & V1** : Concepts de base et connectivité WiFi.
 * **V2** : Tentative de stockage SQLite (abandonnée pour instabilité).
-* **V3 (Actuelle)** : Architecture découplée avec DAO, stockage via `Preferences` et interface Web via `LittleFS`.
+* **V3 ** : Architecture découplée avec DAO, stockage via `Preferences` et interface Web via `LittleFS`.
+* **V4 (Actuelle)** : Config application par NVS, gestion erreurs, Wifi Hybride pour tests debug.
+
 
 ## 🏗️ Architecture Logicielle
 Le code est structuré de manière modulaire pour séparer les responsabilités :
