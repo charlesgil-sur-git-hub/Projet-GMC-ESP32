@@ -5,6 +5,9 @@
  * @version 1.1 (Optimisée pour Preferences)
  * @date    fev 2026
  */
+
+
+
 #ifndef WEB_MANAGER_H
 #define WEB_MANAGER_H
 

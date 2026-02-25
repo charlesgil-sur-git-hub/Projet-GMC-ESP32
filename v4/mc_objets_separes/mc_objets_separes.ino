@@ -6,7 +6,7 @@
 *
 *   
 *  @author :cgil - @2026
-* @version : v4.1 - Modulable & Configurable
+* @version : v4.0 - Modulable & Configurable
  * @details : Utilisation de ConfigManager pour supprimer les constantes en dur
             Reset usine si bouton BOOT pressé au démarrage
 *  
@@ -34,8 +34,8 @@ CONFIGURATION DU MODE RESEAU :
          - Module en réseau étoile   AVEC SCMC
          - Module en solo            SANS SCMC
 
- * CONFIGURATION PREMIER LANCEMENT : 
-    wifi : code SSID : "SSID_GMC_PWD_2026" , Pwd : "2026"
+ * CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
+    wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
     allez sur : http://192.168.4.1/config
 
  * En mode Solo :
@@ -64,17 +64,10 @@ CONFIGURATION DU MODE RESEAU :
            {"id_mesure":132,"date_creation":"2026-02-13 12:34:22","valeur_tdc":2480},
            {"id_mesure":131,"date_creation":"2026-02-13 12:33:51","valeur_tdc":1870}
            ]
+
 */
 
 
-/**
-*  \brief : classe NetworkManagerGMC inline
-* 
-*  @ classe de gestion du réseau SOLO ou en CLUSTER
-*   --- IS_SOLO
-*      SOLO    : "SSID_GMC_MC01" et password "PWD_MC01" sur 192.168.4.1
-*      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
-*/
 
 
 #include <WiFi.h>

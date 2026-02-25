@@ -175,7 +175,26 @@ bool WebManager::handleFileRead(String path) {
     return false;
 }
 
-//******   WIFI    **////
+/***                                                            *****/
+/***                                                            *****/
+
+//******    PARTIE           WIFI                               **////
+
+/***                                                            *****/
+/***                                                            *****/
+
+ /**
+*  @brief : Parametres Wifi voir "ConfigManager.h"
+* 
+*  @ classe de gestion du réseau SOLO ou en CLUSTER
+*   --- IS_SOLO
+*      SOLO    : "SSID_GMC_MC01" et password "PWD_MC01" sur 192.168.4.1
+*      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
+
+    EN DEBUG : voir le fichier source "debugGmc.h"
+    ex tests en meme temps sur http://192.168.1.48/ (home freebox)
+*/
+
 
 void WebManager::setupNetwork() {
     Serial.println("\n--- Configuration Réseau Dynamique ---");
