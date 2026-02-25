@@ -12,7 +12,7 @@
 
 #ifdef DEBUG_GMC_HOME_BOX
 	//! identifiants de Box (pour le mode Station)
-    #define DEBUG_GMC_HOME_BOX_SSID "Freebox_34F871"
+    #define DEBUG_GMC_HOME_BOX_SSID "Freebox-34F871"
     #define DEBUG_GMC_HOME_BOX_PWD  "touballoles"
 #endif
 

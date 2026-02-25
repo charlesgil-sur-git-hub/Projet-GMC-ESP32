@@ -192,8 +192,30 @@ void WebManager::setupNetwork() {
             // MODE HYBRIDE : On cherche la BOX d'abord
             WiFi.mode(WIFI_AP_STA); 
             Serial.println(">>> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
-            Serial.printf("Connexion box : %s ", DEBUG_GMC_HOME_BOX_SSID);
             
+            /*  //! les détails du scan de tous les réseaux 
+            Serial.println("Scan complet des réseaux en cours...");
+            int n = WiFi.scanNetworks();
+            Serial.printf("%d réseaux trouvés :\n", n);
+            if (n == 0) {
+                Serial.println(">>> AUCUN RÉSEAU TROUVÉ. Problème d'antenne ou de puissance ?");
+            } else {
+                for (int i = 0; i < n; ++i) {
+                    Serial.printf("%d: %s (Ch:%d, RSSI:%d dBm)\n", i + 1, WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i));
+                }
+            }
+            */
+
+            Serial.printf("Connexion box : %s ...", DEBUG_GMC_HOME_BOX_SSID);
+
+            Serial.println("--- Diagnostics WiFi ---");
+            Serial.print("Adresse MAC Station : "); Serial.println(WiFi.macAddress());
+            Serial.print("Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
+            Serial.printf("Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
+
+            // On force la désactivation du mode économie (aide à l'auth)
+            WiFi.setSleep(false); 
+            WiFi.setMinSecurity(WIFI_AUTH_WPA2_PSK);
             WiFi.begin(DEBUG_GMC_HOME_BOX_SSID, DEBUG_GMC_HOME_BOX_PWD);
             
             int retry = 0;
