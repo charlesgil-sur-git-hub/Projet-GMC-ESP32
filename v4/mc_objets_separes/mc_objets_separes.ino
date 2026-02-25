@@ -25,7 +25,7 @@
 
         - Synchronisation automatique de l'heure du navigateur vers l'ESP32.
 
-        - V4.1 : Pour Debug Wifi en mode Hybride
+        - Release Pour Debug Wifi en mode Hybride
 
 *
 *
