@@ -4,12 +4,11 @@
 *            Mise en oeuvre de classes en fichiers separes
 * 
 *
-*   
 *  @author :cgil - @2026
-* @version : v4.0 - Modulable & Configurable
- * @details : Utilisation de ConfigManager pour supprimer les constantes en dur
+*  @version : v5.0 - page web "interactive" 
+*  @details : gérer la communication bidirectionnelle entre le navigateur (JavaScript) et ton ESP32 (C++).
+*  @details : Utilisation de Conf pour supprimer les constantes en dur
             Reset usine si bouton BOOT pressé au démarrage
-*  
 *  @details: Programmation en Objet
         - serveur web : separation du code HTML, css dans /DATA // arborescence Web standard
            . linux : utilisez le script 'upload_web.sh' après chaque MAJ
@@ -28,11 +27,12 @@
         - Release Pour Debug Wifi en mode Hybride
 
 *
+* 
 *
 * @details mode d'emploi serveur Web
 CONFIGURATION DU MODE RESEAU :
          - Module en réseau étoile   AVEC SCMC
-         - Module en solo            SANS SCMC
+         - Module en initlo            SANS SCMC
 
  * CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
     wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
@@ -64,68 +64,80 @@ CONFIGURATION DU MODE RESEAU :
            {"id_mesure":132,"date_creation":"2026-02-13 12:34:22","valeur_tdc":2480},
            {"id_mesure":131,"date_creation":"2026-02-13 12:33:51","valeur_tdc":1870}
            ]
-
+		   
+*
+* @details Developpement : architecture
+	gmc.ino (Cœur)
+	conf.h/cpp (Réglages JSON)
+	dao.h/cpp (Gestion des mesures)
+	net.h/cpp (Serveur Web & WiFi)
+	dbg.h/cpp (Mode hybride et outils de test)
+*
 */
-
-
-
 
 #include <WiFi.h>
 #include <WebServer.h>
-#include "WebManager.h"
-#include "daoGmc.h"
+
+
+#include "conf.h" 
+#include "net.h"
+#include "dao.h"
 #include "mesure.h"
-#include "setup_on.h"
-#include "ConfigManager.h" 
-#include "debugGmc.h"
+#include "dbg.h"
 
-// Objets globaux via pointeurs
-ConfigManager* configManager=nullptr; 
-WebServer server(80);
-DaoGMC* dao = nullptr;
-WebManager* webManager = nullptr;
-SetupOn* so = nullptr;
+//! Objets globaux via pointeurs
+WebServer webServer(80);
 
+Conf* conf=nullptr; 
+Dao* dao = nullptr;
+Net* net = nullptr;
 
 /**
  * @brief : declaration des fonctions internes
  */
-void gestionMesures(); //! Simule ou enregistre une mesure
-void setLED(uint8_t r, uint8_t g, uint8_t b); //! simplifier les couleurs
-void checkFactoryReset(); //! Gère le Reset Usine
-void panic(String message);
+bool syncDateTime();        //! Synchro Date Time
+void detectResetConf();     //! Reset parametres conf
+void simulMesures();        //! Simule une mesure par freq
+void setLED(int, int, int); //! Simplifier les couleurs
+void stopSetup(String);     //! Stopper setup si erreurs
 
 
 void setup() {
-    // --- ÉTAPE 1 : BOOT & CONFIG ---
+    //! --- ÉTAPE 1 led orange : CONF ---
     setLED(128, 40, 0); // Orange
     Serial.begin(115200);
-    configManager = new ConfigManager();
-    configManager->begin();
-    
-    // Reset usine (Bouton BOOT)
-    pinMode(0, INPUT_PULLUP);
-    if (digitalRead(0) == LOW) 
-        configManager->factoryReset();
 
-    // --- ÉTAPE 2 : HORLOGE & DAO ---
-    so = new SetupOn();
-    so->synchroniserHorlogeAuSetup();
-    dao = new DaoGMC("/littlefs/gmc.db");
+    //! conf : parametres 
+    conf = new Conf();
+    conf->begin();
+    //! conf : reset (Bouton BOOT 5s)
+    pinMode(0, INPUT_PULLUP);
+    /*if (digitalRead(0) == LOW) 
+        conf->factoryReset();
+    */
+
+    //! --- ÉTAPE 2 led jaune : SYNC DATE ---
+    setLED(255, 255, 0); // jaune
+    if (syncDateTime())
+        Serial.println("Sync Horloge ESP32 ... OK");
+
+    //! --- ÉTAPE 3 led gris : DAO ---
+    setLED(206, 206, 206); // gris
+    dao = new Dao("/littlefs/gmc.db");
     dao->begin();
 
-    // --- ÉTAPE 3 : RÉSEAU & WEB (Le coeur du système) ---
+    // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
     setLED(128, 0, 128); // Violet
-    webManager = new WebManager(server, configManager);
+    net = new Net(webServer, conf);
     
-    if (webManager->begin()) {
-        webManager->setupNetwork(); 
-        webManager->setupRoutes();
-        server.begin();
-        Serial.println("Système Réseau & Web : OK");
+    if (net->begin()) {
+        net->setupNetwork(); 
+        net->setupRoutes();
+        webServer.begin();
+        Serial.println("Système Réseau & Web ... OK");
     } else {
         // SI LE FILESYSTEM NE MONTE PAS, ON ARRÊTE TOUT ICI !
-        panic("Echec initialisation LittleFS / WebManager");
+        stopSetup("Echec initialisation LittleFS / net");
     }
 
     // --- FIN : PRÊT ---
@@ -136,13 +148,13 @@ void setup() {
 
 void loop() {
     // 1. Gérer les requêtes Web (Toujours en priorité)
-    server.handleClient();
+    webServer.handleClient();
 
-    // 2. Surveillance du bouton Reset (Non-bloquant)
-    checkFactoryReset();
+    // 2. Surveillance du bouton "boot" 5s pour reset conf (Non-bloquant)
+    detectResetConf();
 
     // 3. Gestion de l'échantillonnage des mesures
-    gestionMesures();
+    simulMesures();
 }
 
 
@@ -150,9 +162,9 @@ void loop() {
 /*** FONCTIONS INTERNES ****/
 
 /**
- * Gère le Reset Usine si le bouton BOOT est maintenu 5s
+ * Gère le Reset des params conf si le bouton BOOT est maintenu 5s
  */
-void checkFactoryReset() {
+void detectResetConf() {
     static unsigned long buttonPressTime = 0;
     static bool isPressing = false;
 
@@ -167,7 +179,7 @@ void checkFactoryReset() {
         
         if (duration > 5000) {
             setLED(255, 0, 0); // Rouge Fixe
-            configManager->factoryReset(); 
+            conf->factoryReset(); 
         } else if (duration > 1000) {
             // Feedback visuel : clignotement
             if ((millis() / 100) % 2) setLED(255, 0, 0); 
@@ -177,19 +189,19 @@ void checkFactoryReset() {
         // Relâché avant les 5s
         isPressing = false;
         // Restaurer couleur de veille
-        if (configManager->getMode() == "solo") setLED(30, 5, 0);
+        if (conf->getMode() == "initlo") setLED(30, 5, 0);
         else setLED(0, 0, 30);
     }
 }
 
 /**
- * Simule ou enregistre une mesure selon la fréquence définie en config
+ * @brief : Simule ou enregistre une mesure selon la fréquence définie en config
  */
-void gestionMesures() {
+void simulMesures() {
     static unsigned long lastUpdate = 0;
     
     // On récupère dynamiquement la fréquence depuis la config
-    unsigned long intervalle = configManager->getFreq() * 1000;
+    unsigned long intervalle = conf->getFreq() * 1000;
 
     if (millis() - lastUpdate >= intervalle) { 
         lastUpdate = millis();
@@ -204,23 +216,23 @@ void gestionMesures() {
         }
         
         delay(100); // Petit flash
-        if (configManager->getMode() == "solo") setLED(30, 5, 0);
+        if (conf->getMode() == "initlo") setLED(30, 5, 0);
         else setLED(0, 0, 30);
     }
 }
 
 /**
-* Fonction utilitaire pour simplifier les couleurs
+* Fonction util pour simplifier les couleurs
 */
-void setLED(uint8_t r, uint8_t g, uint8_t b) {
-   neopixelWrite(RGB_BUILTIN, r, g, b);
+void setLED(int r, int g, int b) {
+   neopixelWrite(RGB_BUILTIN, (uint8_t)r, (uint8_t)g, (uint8_t)b);
 }
 
 /**
-@brief fonction panic() qui allume la LED en rouge et bloque tout
+@brief fonction de sécurité dans le setup 
+    allume la LED en rouge et bloque tout
 */
-// --- FONCTION DE SÉCURITÉ GLOBALE ---
-void panic(String message) {
+void stopSetup(String message) {
     setLED(255, 0, 0); // Passage immédiat au ROUGE
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     Serial.print("!!! ERREUR CRITIQUE : ");
@@ -235,4 +247,22 @@ void panic(String message) {
         Serial.println("❌ mode panic ...");
     }
 }
- 
+
+/**
+ * @brief synchronise la date et l heure de l horloge PC<=>Esp32 
+ */
+bool syncDateTime() {
+    struct tm tm_compile;
+	Serial.println("Synchronisation horloge ... ");  
+    // On récupère les macros de compilation __DATE__ et __TIME__
+    // Format : "Feb  6 2026" et "12:34:56"
+    if (strptime(__DATE__ " " __TIME__, "%b %d %Y %H:%M:%S", &tm_compile)) {
+        time_t t = mktime(&tm_compile);
+        struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+        //Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
+        return true;
+    }
+
+    return false;
+}

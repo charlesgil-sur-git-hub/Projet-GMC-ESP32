@@ -1,7 +1,7 @@
 /**
  * \brief classe acces base de donées sans SQLITe mais Preferences
  *
- * \file : DaoGMC.cpp
+ * \file : dao.cpp
  * \date : 2026
  *
  Note: utilisation de Preferences et pas de Sqlite
@@ -10,13 +10,13 @@
 
 
 
-#include "daoGmc.h"
+#include "dao.h"
 #include <time.h> // Indispensable pour manipuler le temps
 
 // Le constructeur reste vide car Preferences ne gère pas de fichier physique 'path'
-DaoGMC::DaoGMC(const char* path) {}
+Dao::Dao(const char* path) {}
 
-bool DaoGMC::begin() {
+bool Dao::begin() {
     // On teste si on arrive à ouvrir le namespace au démarrage
     if (prefs.begin(_namespace, false)) {
         prefs.end(); // On referme tout de suite, on ouvrira à la demande
@@ -27,9 +27,9 @@ bool DaoGMC::begin() {
 
 
 /**
- * \brief Extrait la valeur : soit depuis du SQL, soit depuis une String brute
+ * \brief Extrait la valeur : initit depuis du SQL, initit depuis une String brute
  */
-int DaoGMC::extractionValeur(String query) {
+int Dao::extractionValeur(String query) {
     query.toUpperCase();
 
     // Si c'est du SQL "VALUES (123)"
@@ -55,7 +55,7 @@ int DaoGMC::extractionValeur(String query) {
  * \brief Intercepteur de requêtes SQL
  * On extrait la valeur numérique de la chaîne de caractères SQL
  */
- bool DaoGMC::execute(const char* sql) {
+ bool Dao::execute(const char* sql) {
     String query = String(sql);
     query.toUpperCase();
     
@@ -90,7 +90,7 @@ int DaoGMC::extractionValeur(String query) {
 /**
  * \brief Méthode métier pour écrire
  */
-bool DaoGMC::accederTableMesure_ecrireUneMesure(int valeur_tdc) {
+bool Dao::accederTableMesure_ecrireUneMesure(int valeur_tdc) {
     // On recrée la chaîne SQL que ton programme original attendait
     String sql = "INSERT INTO mesures (valeur_tdc) VALUES (" + String(valeur_tdc) + ");";
     return this->execute(sql.c_str());
@@ -100,7 +100,7 @@ bool DaoGMC::accederTableMesure_ecrireUneMesure(int valeur_tdc) {
  * \brief Méthode métier pour lire
  * On retourne un vector pour rester compatible avec ton interface Web
  */
- std::vector<Mesure> DaoGMC::accederTableMesure_lireDesMesures(unsigned short int limit) {
+ std::vector<Mesure> Dao::accederTableMesure_lireDesMesures(unsigned short int limit) {
     std::vector<Mesure> liste;
     prefs.begin(_namespace, true);
     
@@ -130,7 +130,7 @@ bool DaoGMC::accederTableMesure_ecrireUneMesure(int valeur_tdc) {
 
 
 
-bool DaoGMC::accederTableMesure_Creer() { 
+bool Dao::accederTableMesure_Creer() { 
     Serial.println("DAO: Simulation de création de table OK (Preferences prête)");
     return true; 
 }

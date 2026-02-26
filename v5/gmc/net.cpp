@@ -1,15 +1,25 @@
-#include "WebManager.h"
-#include "debugGmc.h"
+/**
+ * @brief   code de la classe modele pour 
+				gerer le web et la page web
+ * @file    net.cpp
+ * @author  cgil 
+ * @version 1.1 
+ * @date    fev 2026
+ */
+
 #include <WiFi.h>  
 #include <ArduinoJson.h>
 
+#include "net.h"
+#include "dbg.h"
+
 // On n'oublie pas de dire que dao existe ailleurs
-extern DaoGMC* dao; 
+extern Dao* dao; 
 
-WebManager::WebManager(WebServer& server, ConfigManager* config) 
-    : _webServer(server), _configManager(config) {}
+Net::Net(WebServer& webServer, Conf* config) 
+    : _webServer(webServer), _conf(config) {}
 
-bool WebManager::begin() {
+bool Net::begin() {
    Serial.println("Tentative de montage de LittleFS...");
     
     // Le 'true' ici est vital : il force le formatage si l'image est mal lue
@@ -35,7 +45,7 @@ bool WebManager::begin() {
     return true;
 }
 
-void WebManager::setupRoutes() {
+void Net::setupRoutes() {
     // --- 1. L'URL pour les HUMAINS ---
     _webServer.on("/config", HTTP_GET, [this]() {
         File file = LittleFS.open("/config.html", "r");
@@ -51,9 +61,9 @@ void WebManager::setupRoutes() {
     // En GET : On envoie les données
     _webServer.on("/api/config", HTTP_GET, [this]() {
         String json = "{";
-        json += "\"ssid\":\"" + _configManager->getSSID() + "\",";
-        json += "\"freq\":" + String(_configManager->getFreq()) + ",";
-        json += "\"mode\":\"" + _configManager->getMode() + "\"";
+        json += "\"ssid\":\"" + _conf->getSSID() + "\",";
+        json += "\"freq\":" + String(_conf->getFreq()) + ",";
+        json += "\"mode\":\"" + _conf->getMode() + "\"";
         json += "}";
         _webServer.send(200, "application/json", json);
     });
@@ -61,7 +71,7 @@ void WebManager::setupRoutes() {
     // En POST : On reçoit et on enregistre
     _webServer.on("/api/config", HTTP_POST, [this]() {
         // Sauvegarde via les arguments du formulaire reçu
-        _configManager->save(
+        _conf->save(
             _webServer.arg("ssid"),
             _webServer.arg("pass"),
             _webServer.arg("freq").toInt(),
@@ -154,7 +164,7 @@ void WebManager::setupRoutes() {
     });
 }
 
-String WebManager::getContentType(String filename) {
+String Net::getContentType(String filename) {
     if (filename.endsWith(".html")) return "text/html";
     if (filename.endsWith(".css"))  return "text/css";
     if (filename.endsWith(".js"))   return "application/javascript";
@@ -162,7 +172,7 @@ String WebManager::getContentType(String filename) {
     return "text/plain";
 }
 
-bool WebManager::handleFileRead(String path) {
+bool Net::handleFileRead(String path) {
     if (path.endsWith("/")) path += "index.html";
     String contentType = getContentType(path);
 
@@ -175,32 +185,32 @@ bool WebManager::handleFileRead(String path) {
     return false;
 }
 
-/***                                                            *****/
-/***                                                            *****/
+/***                                          *****/
+/***                                          *****/
 
-//******    PARTIE           WIFI                               **////
+//******    PARTIE           WIFI             **////
 
-/***                                                            *****/
-/***                                                            *****/
+/***                                          *****/
+/***                                      ...    *****/
 
  /**
-*  @brief : Parametres Wifi voir "ConfigManager.h"
+*  @brief : Parametres Wifi voir "conf.h"
 * 
 *  @ classe de gestion du réseau SOLO ou en CLUSTER
 *   --- IS_SOLO
 *      SOLO    : "SSID_GMC_MC01" et password "PWD_MC01" sur 192.168.4.1
 *      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
 
-    EN DEBUG : voir le fichier source "debugGmc.h"
+    EN DEBUG : voir le fichier initurce "dbg.h"
     ex tests en meme temps sur http://192.168.1.48/ (home freebox)
 */
 
 
-void WebManager::setupNetwork() {
+void Net::setupNetwork() {
     Serial.println("\n--- Configuration Réseau Dynamique ---");
     
-    if (_configManager->getMode() == "solo") { 
-        Serial.printf("Mode SOLO - AP: %s\n", _configManager->getSSID().c_str());
+    if (_conf->getMode() == "initlo") { 
+        Serial.printf("Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
         
         // 1. Nettoyage complet pour repartir sur une base saine
         WiFi.softAPdisconnect(true); 
@@ -266,10 +276,10 @@ void WebManager::setupNetwork() {
 
         // --- 2. CONFIGURATION DU POINT D'ACCÈS (AP) ---
         // On le fait après la connexion Box pour hériter du bon canal WiFi
-        String pass = _configManager->getPassword();
+        String pass = _conf->getPassword();
         const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
 
-        if (WiFi.softAP(_configManager->getSSID().c_str(), passStr)) {
+        if (WiFi.softAP(_conf->getSSID().c_str(), passStr)) {
             Serial.print("Point d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
         } else {
             Serial.println("ERREUR : Échec création AP.");
@@ -278,9 +288,9 @@ void WebManager::setupNetwork() {
 
     } else {
         // --- MODE CLUSTER ---
-        Serial.printf("Mode CLUSTER - Connexion à: %s\n", _configManager->getSSID().c_str());
+        Serial.printf("Mode CLUSTER - Connexion à: %s\n", _conf->getSSID().c_str());
         WiFi.mode(WIFI_STA);
-        WiFi.begin(_configManager->getSSID().c_str(), _configManager->getPassword().c_str());
+        WiFi.begin(_conf->getSSID().c_str(), _conf->getPassword().c_str());
         
         int retry = 0;
         while (WiFi.status() != WL_CONNECTED && retry < 30) { 
@@ -299,7 +309,7 @@ void WebManager::setupNetwork() {
 
 // Fonction utilitaire pour bloquer le système en cas d'erreur
 
-void WebManager::haltSystem() {
+void Net::haltSystem() {
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     Serial.println("!!! ❌ SYSTÈME HALTÉ : ERREUR RÉSEAU  !!!");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -310,7 +320,7 @@ void WebManager::haltSystem() {
         neopixelWrite(RGB_BUILTIN, 0, 0, 0); // ÉTEINT
         delay(500);
         
-        // On réinitialise le watchdog si nécessaire pour éviter un reboot automatique
+        // On réinitialise le watchdog si nécessaire pour éviter un reinit automatique
         yield(); 
     }
 }

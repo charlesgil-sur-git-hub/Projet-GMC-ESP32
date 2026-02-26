@@ -4,10 +4,10 @@
  *
  */
 
-#ifndef DEBUG_GMC_H
-#define DEBUG_GMC_H
+#ifndef DBG_H
+#define DBG_H
 
-// Activer le mode debug Home maison
+// Activer le mode debug Home maiinitn
 #define DEBUG_GMC_HOME_BOX 
 
 #ifdef DEBUG_GMC_HOME_BOX

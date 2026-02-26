@@ -1,6 +1,7 @@
 /**
  * @brief   Coder une classe  : 
- *                    Declaration de la classe mesure pour DAO
+ *             Declaration de la classe mesure pour la DAO 
+ 
  * @file    	mesure.h
  * @author	cgil 
    @version	1.0

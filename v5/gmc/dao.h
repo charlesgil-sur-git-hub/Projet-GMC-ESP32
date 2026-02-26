@@ -1,23 +1,24 @@
 /**
- * \brief classe acces base de donées SQLITe 
+ * \brief classe acces base de données type SQLITe
+			en utilisant "Preferences" ou NVS3
  *
- * \file : daoGmc.h
+ * \file : dao.h
  * \date :fev 26
  * \author : cgil
  *
- Note: on supprime Sqllite et ==> preferences
+ Note: on supprime Sqlite et ==> preferences
  
  */
 
-#ifndef DAOGMC_H
-#define DAOGMC_H
+#ifndef DAO_H
+#define DAO_H
 
 #include <Arduino.h>
 #include <Preferences.h>
 #include <vector>
 #include "mesure.h"
 
-class DaoGMC {
+class Dao {
 private:
     Preferences prefs;
     const char* _namespace = "gmc_storage";
@@ -29,7 +30,7 @@ private:
 
 
 public:
-    DaoGMC(const char* path);
+    Dao(const char* path);
     bool begin();
     
     // Intercepteur de requêtes SQL

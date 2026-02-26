@@ -1,19 +1,29 @@
 /**
  * @brief   Classe de gestion de toute la partie 
  *                    configuration de l ESP32
- * @file    	ConfigManager.h
+ * @file    	conf.h
  * @author	cgil 
    @version	1.0
  * @date    fev 2026
  */
  
-#ifndef CONFIG_MANAGER_H
-#define CONFIG_MANAGER_H
+#ifndef CONF_H
+#define CONF_H
 
 #include <Arduino.h>
 #include <Preferences.h>
 
-class ConfigManager {
+/**
+ * @class conf
+ * @brief Gère la configuration persistante du module (JSON sur LittleFS).
+ * * GUIDE AJOUT PARAMÈTRE :
+ * 1. Déclarer la variable : String _monParam;
+ * 2. Créer le Getter : String getMonParam() { return _monParam; }
+ * 3. Créer le Setter : void setMonParam(String v) { _monParam = v; }
+ * 4. Mettre à jour load() : _monParam = doc["monParam"] | "defaut";
+ * 5. Mettre à jour save() : doc["monParam"] = _monParam;
+ */
+class Conf {
 private:
     Preferences _prefs;
     String _ssid;
@@ -22,7 +32,7 @@ private:
     String _mode;
 
 public:
-    ConfigManager();
+    Conf();
     
     // Charge les données depuis la Flash (NVS)
     void begin();

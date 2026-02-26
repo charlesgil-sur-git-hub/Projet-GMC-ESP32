@@ -1,28 +1,29 @@
 /**
- * @brief   Declaration de la classe modele pour generer la page web
- * @file    webManager.h
+ * @brief   Declaration de la classe modele pour 
+				gerer le web et la page web
+ * @file    net.h
  * @author  cgil 
  * @version 1.1 (Optimisée pour Preferences)
  * @date    fev 2026
  */
 
-
-
-#ifndef WEB_MANAGER_H
-#define WEB_MANAGER_H
+#ifndef NET_H
+#define NET_H
 
 #include <WebServer.h>
 #include <LittleFS.h>
-#include "daoGmc.h" // Ajouté pour que le manager connaisse la DAO
-#include "ConfigManager.h"
-#include "debugGmc.h"
 
-// On indique au compilateur que l'objet dao est défini dans le fichier principal
-extern DaoGMC* dao; 
+#include "dao.h" 
+#include "conf.h"
+#include "dbg.h"
 
-class WebManager {
+// On indique au compilateur que l'objet dao 
+// est défini dans le fichier principal
+extern Dao* dao; 
+
+class Net {
 public:
-    WebManager(WebServer& server, ConfigManager* config);
+    Net(WebServer&, Conf*);
     bool begin();
     void setupNetwork(); //! Wifi
     void setupRoutes();
@@ -30,7 +31,7 @@ public:
 
 private:
     WebServer& _webServer;
-    ConfigManager* _configManager; // On stocke une référence à la config
+    Conf* _conf; // On stocke une référence à la config
     
     // Handlers pour les requêtes
     void handleRoot();      // Pour afficher la page d'accueil

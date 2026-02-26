@@ -1,13 +1,13 @@
 /**
  * @brief   Classe de gestion de toute la partie 
- *                    configuration de l ESP32
- * @file    	ConfigManager.h
+ *                    configuration des parametres de l ESP32
+ * @file    	conf.h
  * @author	cgil 
    @version	1.0
  * @date    fev 2026
  */
  
-#include "ConfigManager.h"
+#include "conf.h"
 
 
 //! --- DEFAUT  ---
@@ -19,16 +19,16 @@ const char* pass_default= "1234XXXX";
 const char* ssid_gmc_scmc = "SSID_GMC_SCMC"; // Le MC se connecte au WiFi du SCMC
 const char* pass_scmc= "PWD_SCMC";
 
-//! --- Configuration en solo WiFi (Mode Indépendant / Gateway) ---
+//! --- Configuration en initlo WiFi (Mode Indépendant / Gateway) ---
 const char* ssid_gmc_mc01 = "SSID_GMC_MC01";
 const char* pass_mc01 = "PWD_MC01";
 
 
 
 
-ConfigManager::ConfigManager() {}
+Conf::Conf() {}
 
-void ConfigManager::begin() {
+void Conf::begin() {
     _prefs.begin("settings", true); // Mode lecture seule
 
     // 1. On récupère l'ID unique (6 derniers caractères de la MAC)
@@ -46,11 +46,11 @@ void ConfigManager::begin() {
 
     _password = _prefs.getString("password", "1234" + uniqueId);
     _freqMesure = _prefs.getInt("freq", 30);
-    _mode = _prefs.getString("mode", "solo");
+    _mode = _prefs.getString("mode", "initlo");
 
-    // Si pour une raison X ou Y (après un reset), le mode est vide ou corrompu
-    if (_mode != "solo" && _mode != "cluster") {
-        _mode = "solo"; 
+    // Si pour une raiinitn X ou Y (après un reset), le mode est vide ou corrompu
+    if (_mode != "initlo" && _mode != "cluster") {
+        _mode = "initlo"; 
     }
     if (_ssid.length() == 0) {
         _ssid = defaultSSID;
@@ -68,7 +68,7 @@ void ConfigManager::begin() {
     this->save(_ssid, _password, _freqMesure, _mode);
 }
 
-void ConfigManager::save(String ssid, String pass, int freq, String mode) {
+void Conf::save(String ssid, String pass, int freq, String mode) {
     _prefs.begin("settings", false); // Mode écriture
     
     _prefs.putString("ssid", ssid);
@@ -85,7 +85,7 @@ void ConfigManager::save(String ssid, String pass, int freq, String mode) {
     _mode = mode;
 }
 
-void ConfigManager::factoryReset() {
+void Conf::factoryReset() {
     _prefs.begin("settings", false);
     _prefs.clear();
     _prefs.end();
