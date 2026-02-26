@@ -104,32 +104,44 @@ void stopSetup(String);     //! Stopper setup si erreurs
 
 void setup() {
     //! --- ÉTAPE 1 led orange : CONF ---
-    setLED(128, 40, 0); // Orange
+    setLED(128, 40, 0); delay(1000); // Orange
     Serial.begin(115200);
+    Serial.println("\nDemarrage Programme GMC-ESP32");
 
-    //! conf : parametres 
+    //! conf : parametres
+    Serial.println("conf ..."); 
     conf = new Conf();
     conf->begin();
+    if (conf->begin())
+        Serial.println("conf ... OK");
+    else
+        stopSetup("Echec conf");
     //! conf : reset (Bouton BOOT 5s)
     pinMode(0, INPUT_PULLUP);
-    /*if (digitalRead(0) == LOW) 
-        conf->factoryReset();
-    */
+    delay(1000);
 
     //! --- ÉTAPE 2 led jaune : SYNC DATE ---
-    setLED(255, 255, 0); // jaune
+    Serial.println("syncDateTime ..."); 
+    setLED(255, 255, 0); delay(2000); // jaune
     if (syncDateTime())
         Serial.println("Sync Horloge ESP32 ... OK");
+    else
+        stopSetup("Echec Sync Horloge ESP32");
+    
 
     //! --- ÉTAPE 3 led gris : DAO ---
-    setLED(206, 206, 206); // gris
+    Serial.println("Dao ...");
+    setLED(206, 206, 206); delay(2000); // gris
     dao = new Dao("/littlefs/gmc.db");
-    dao->begin();
+    if (dao->begin())
+        Serial.println("Dao ... OK");
+    else
+        stopSetup("Echec Dao");
 
     // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
-    setLED(128, 0, 128); // Violet
+    Serial.println("Système Réseau & Web ...");
+    setLED(128, 0, 128); delay(2000); // Violet
     net = new Net(webServer, conf);
-    
     if (net->begin()) {
         net->setupNetwork(); 
         net->setupRoutes();
@@ -137,7 +149,7 @@ void setup() {
         Serial.println("Système Réseau & Web ... OK");
     } else {
         // SI LE FILESYSTEM NE MONTE PAS, ON ARRÊTE TOUT ICI !
-        stopSetup("Echec initialisation LittleFS / net");
+        stopSetup("Echec Système Réseau & Web");
     }
 
     // --- FIN : PRÊT ---
@@ -212,7 +224,7 @@ void simulMesures() {
         int val = random(180, 260);
         
         if(dao->accederTableMesure_ecrireUneMesure(val)) {
-           Serial.printf("Mesure stockée : %d\n", val);
+           Serial.printf("Mesure simulee : %d\n", val);
         }
         
         delay(100); // Petit flash

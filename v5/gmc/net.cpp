@@ -45,7 +45,7 @@ bool Net::begin() {
     return true;
 }
 
-void Net::setupRoutes() {
+/*void Net::setupRoutes() {
     // --- 1. L'URL pour les HUMAINS ---
     _webServer.on("/config", HTTP_GET, [this]() {
         File file = LittleFS.open("/config.html", "r");
@@ -148,7 +148,13 @@ void Net::setupRoutes() {
         _webServer.send(200, "application/json", response);
     });
     
-    _webServer.on("/api/led", HTTP_GET, [this]() {
+     // --- ROUTE POUR L'ACTION LED (Bouton 1) ---
+    _webServer.on("/api/flash", HTTP_GET, [this]() {
+         Serial.println("🚨 Action LED demandée !");
+        
+        // Ton code pour faire flasher la LED orange
+        // flashOrange(); 
+
         // 1. Lire l'état actuel et l'inverser
         int etatActuel = digitalRead(2); // On lit le GPIO 2
         int nouvelEtat = !etatActuel;
@@ -162,7 +168,144 @@ void Net::setupRoutes() {
         serializeJson(doc, response);
         _webServer.send(200, "application/json", response);
     });
+
+   
+
+    // --- ROUTE POUR LA TEMPÉRATURE ---
+    _webServer.on("/api/get_temp", HTTP_GET, [this](){
+        Serial.println("🌐 Requête reçue : /api/get_temp");
+
+        // 1. On récupère la vraie valeur (via ton DAO par exemple)
+        float t = 22.5; // Ici tu mettras : _dao->getLastTemp();
+        String h = "10:45"; // Ici : _base->getFormattedTime();
+
+        // 2. On prépare la réponse au format JSON (le langage du JS)
+        // On crée une chaîne : {"temp": 22.5, "heure": "10:45"}
+        String json = "{";
+        json += "\"temp\":" + String(t) + ",";
+        json += "\"heure\":\"" + h + "\"";
+        json += "}";
+
+        // 3. On envoie la réponse au navigateur
+        _webServer.send(200, "application/json", json);
+    });
+
+    _webServer.on("/api/piloter_gpio", HTTP_GET, [this](AsyncWebServerRequest *request){
+        Serial.println("🚨 Bouton  piloter_gpio !");
+
+        // Votre code C++ ici (ex: piloter le GPIO )
+        _webServer.send(200, "text/plain", "Action reçue !");
+    });
 }
+*/
+
+/**
+ * @section GUIDE_PEDAGOGIQUE_V5
+ * * COMMENT AJOUTER UNE NOUVELLE INTERACTION (EX: UN BOUTON) :
+ * * 1. DANS LE HTML : Créer l'élément visuel
+ * <button onclick="maFonction()">Mon Action</button>
+ * * 2. DANS LE JS (script.js) : Créer la fonction d'appel
+ * function maFonction() { 
+ * fetch('/api/ma-route').then(res => res.json()).then(data => ...); 
+ * }
+ * * 3. DANS LE C++ (ici) : Créer le "Slot" (la Route)
+ * _webServer.on("/api/ma-route", HTTP_GET, [this](){
+ * // Faire l'action C++ (ex: digitalWrite)
+ * _webServer.send(200, "application/json", "{\"status\":\"ok\"}");
+ * });
+ */
+void Net::setupRoutes() {
+
+    // --- 1. ROUTES POUR LES PAGES (Interface Utilisateur) ---
+    
+    _webServer.on("/", HTTP_GET, [this]() {
+        if (!handleFileRead("/index.html")) {
+            _webServer.send(404, "text/plain", "index.html introuvable");
+        }
+    });
+
+    _webServer.on("/config", HTTP_GET, [this]() {
+        handleFileRead("/config.html");
+    });
+
+
+    // --- 2. API : ROUTES DE DONNÉES (Le "Back-end") ---
+
+    // [ROUTE STATUS] : Appelée automatiquement toutes les 15s par le timer JS
+    _webServer.on("/api/status", HTTP_GET, [this]() {
+        JsonDocument doc; 
+        
+        // Récupération de la dernière mesure via le DAO
+        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
+        
+        if (!mesures.empty()) {
+            doc["temp"] = mesures[0].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
+            doc["date"] = mesures[0].getDateCreation();
+        } else {
+            doc["temp"] = 0;
+            doc["date"] = "--:--";
+        }
+
+        doc["uptime"] = millis() / 1000;
+        
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
+    });
+
+   
+
+    // [ROUTE GET_UPTIME] :  Reçoit une valeur et répond
+    _webServer.on("/api/get_uptime", HTTP_GET, [this]() {
+        String message = "Aucune valeur";
+         Serial.print("/api/get_uptime...");
+        
+        // On vérifie si l'argument "valeur" est présent dans l'URL
+        if (_webServer.hasArg("valeur")) {
+            message = _webServer.arg("valeur");
+            Serial.print("📥 Valeur uptime reçue du Web : ");
+            Serial.println(message);
+            
+            // Exemple : on fait clignoter la LED selon la valeur reçue
+            // flashLED(message.toInt()); 
+        }
+
+        JsonDocument doc;
+        doc["status"] = "OK";
+        doc["recu"] = message; // On renvoie la valeur pour confirmation
+        
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
+    });
+
+    // [ROUTE PILOTER] : Action générique sur GPIO
+    _webServer.on("/api/piloter_gpio", HTTP_GET, [this](){
+        Serial.println("Action spécifique sur GPIO demandée par le Web");
+        // Exemple d'action : digitalWrite(4, HIGH);
+        _webServer.send(200, "text/plain", "GPIO Actionne avec succes");
+    });
+
+    // [ROUTE SYNC] : Reçoit l'heure du navigateur au chargement
+    _webServer.on("/api/sync_time", HTTP_GET, [this]() {
+        if (_webServer.hasArg("t")) {
+            time_t t = _webServer.arg("t").toInt();
+            struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
+            settimeofday(&tv, NULL); 
+            _webServer.send(200, "text/plain", "Heure synchronisee");
+        }
+    });
+
+
+    // --- 3. GESTION DES FICHIERS STATIQUES & ERREURS ---
+
+    _webServer.onNotFound([this]() {
+        if (!handleFileRead(_webServer.uri())) {
+            _webServer.send(404, "text/plain", "404: Fichier non trouve");
+        }
+    });
+}
+
 
 String Net::getContentType(String filename) {
     if (filename.endsWith(".html")) return "text/html";

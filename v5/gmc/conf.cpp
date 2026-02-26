@@ -28,7 +28,7 @@ const char* pass_mc01 = "PWD_MC01";
 
 Conf::Conf() {}
 
-void Conf::begin() {
+bool Conf::begin() {
     _prefs.begin("settings", true); // Mode lecture seule
 
     // 1. On récupère l'ID unique (6 derniers caractères de la MAC)
@@ -66,6 +66,8 @@ void Conf::begin() {
 
     //! on Resauve pour si on a modifie
     this->save(_ssid, _password, _freqMesure, _mode);
+
+    return true;
 }
 
 void Conf::save(String ssid, String pass, int freq, String mode) {

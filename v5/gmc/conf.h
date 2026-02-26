@@ -35,7 +35,7 @@ public:
     Conf();
     
     // Charge les données depuis la Flash (NVS)
-    void begin();
+    bool begin();
     
     // Sauvegarde les données
     void save(String ssid, String pass, int freq, String mode);

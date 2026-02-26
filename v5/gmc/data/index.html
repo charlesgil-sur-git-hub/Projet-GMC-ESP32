@@ -16,21 +16,23 @@
         </header>
         
         <main class="card">
-            <section class="info-section">
-                <p>Serveur : <strong>LittleFS</strong></p>
-                <div class="data-display">
-                    Température : <span id="tempValue">--</span>°C | 
-                    à : <span id="dateValue">--</span> h
-                </div>
-            </section>
+			<section class="info-section">
+				<p>Serveur : <strong>LittleFS</strong></p>
+				<div class="data-display">
+					Température : <span id="tempValue">--</span>°C | 
+					à : <span id="dateValue">--</span> h
+				</div>
+			</section>
 
-            <hr>
+			<hr>
 
-            <section class="action-section">
-                <button id="actionBtn" class="btn">Action LED</button>
-                <p id="responseField"></p>
-            </section>
-        </main>
+			<section class="action-section">
+				<button id="uptimeBtn" class="btn">Envoyer Uptime</button>
+				<button class="btn" onclick="triggerGPIO()">Piloter GPIO</button>
+				
+				<p id="responseField"></p>
+			</section>
+		</main>
     </div>
     <script src="script.js"></script>
 </body>

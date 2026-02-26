@@ -1,115 +1,106 @@
+/**
+ * 🛠 GUIDE DÉVELOPPEUR JS :
+ * - Pour ajouter une donnée : update displayData()
+ * - Pour ajouter un bouton : fetch('/api/ma-route').then(...)
+ */
+
 let timeLeft = 15;
+let currentUptime = 0;
 
-function updateTimer() {
-    timeLeft--;
-    if (timeLeft <= 0) {
-        timeLeft = 15; // On repart à 15 après le refresh
-        refreshData();
-    }
-    document.getElementById('timerNext').innerText = `MàJ dans : ${timeLeft}s`;
-}
-
-// 1. Détection de l'environnement (définie une seule fois pour tout le script)
+// 1. Détection de l'environnement (PC vs ESP32)
 const isLocal = 
     window.location.protocol === 'file:' || 
     window.location.hostname === 'localhost' || 
     window.location.hostname === '127.0.0.1';
 
-// 2. Fonction pour mettre à jour l'affichage HTML (centralisée)
+// 2. Gestion du Timer (Rafraîchissement auto)
+function updateTimer() {
+    timeLeft--;
+    if (timeLeft <= 0) {
+        timeLeft = 15; 
+        refreshData();
+    }
+    const timerElem = document.getElementById('timerNext');
+    if(timerElem) timerElem.innerText = `MàJ dans : ${timeLeft}s`;
+}
+
+// 3. Mise à jour de l'affichage (Centralisé)
 function displayData(data) {
-	// On convertit 187 en 18.7
+    // Traitement de la température (ex: 187 -> 18,7)
     let tempReelle = data.temp / 10;
-	// On force l'affichage d'un chiffre après la virgule et on remplace le point par une virgule
     let tempTexte = tempReelle.toFixed(1).replace('.', ',');
 	
     document.getElementById('tempValue').innerText = tempTexte;
-	document.getElementById('dateValue').innerText = data.date;
+    document.getElementById('dateValue').innerText = data.date || "--";
     
-    // On affiche l'uptime s'il existe (mode réel), sinon un message de test
-    const statusText = data.uptime ? `Mise à jour : ${data.uptime}s` : "Simulation réussie (JSON local)";
+	currentUptime = data.uptime;
+    const statusText = data.uptime ? `Uptime : ${data.uptime}s` : "Simulation locale";
     document.getElementById('responseField').innerText = statusText;
 }
 
-// 3. Fonction principale pour récupérer les données
+// 4. Récupération des données (Fetch / API)
 function refreshData() {
     const badge = document.getElementById('envBadge');
 
     if (isLocal) {
-        // ... ton code de simulation actuel ...
+        // SIMULATION pour test sur PC
+        console.log("Mode Simulation");
+        const mockData = { temp: 215, date: "14:30", uptime: 0 };
+        displayData(mockData);
+        badge.innerText = "Mode Test : Local (PC)";
+        badge.style.backgroundColor = "#ff9800"; // Orange
     } else {
+        // RÉEL : Appel à l'ESP32
         fetch('/api/status')
-            .then(response => {
-                if (!response.ok) throw new Error();
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                // SUCCESS : On est connecté
                 displayData(data);
                 badge.innerText = "ESP32 Connecté";
                 badge.style.backgroundColor = "#4CAF50"; // Vert
             })
             .catch(err => {
-                // ERREUR : Le WiFi est coupé ou l'ESP32 redémarre
-                document.getElementById('responseField').innerText = "⚠️ Connexion perdue...";
-                badge.innerText = "🔴 Déconnecté - Tentative...";
+                badge.innerText = "🔴 Déconnecté";
                 badge.style.backgroundColor = "#f44336"; // Rouge
-                
-                // Optionnel : on remet les valeurs à "--" pour ne pas tromper l'utilisateur
-                document.getElementById('tempValue').innerText = "--";
             });
     }
 }
 
+// 5. Fonctions spécifiques pour les boutons (SIGNAUX)
 
-
-// 4. Initialisation au chargement de la page
-document.addEventListener('DOMContentLoaded', () => {
-    const badge = document.getElementById('envBadge');
-
-    // 1. Configuration du badge visuel
-    if (isLocal) {
-        badge.innerText = "Mode Test : Local (PC/Ubuntu)";
-        badge.className = "badge mode-local";
-    } else {
-        badge.innerText = "Mode Réel : ESP32 Connecté";
-        badge.className = "badge mode-esp";
-    }
-
-    // 2. Un seul écouteur pour le bouton (mise à jour manuelle)
-    document.getElementById('actionBtn').addEventListener('click', refreshData);
-
-    // 3. --- AJOUT : MISE À JOUR AUTOMATIQUE ---
-    refreshData();              // On l'appelle une fois au démarrage
-    //setInterval(refreshData, 15000); // Puis toutes les 15 secondes (5000 ms)
-	// Dans ton DOMContentLoaded, remplace le setInterval(refreshData, 15000) par :
-	setInterval(updateTimer, 1000);
-});
-
-window.onload = function() {
-    // Dès que la page charge, on envoie l'heure du PC/Smartphone à l'ESP32
-    let now = Math.floor(Date.now() / 1000); // Temps Unix en secondes
-    fetch(`/api/sync_time?t=${now}`)
-        .then(response => console.log("Horloge synchronisée avec le navigateur !"));
-};
-
-
-// du DOMContentLoaded
-document.getElementById('actionBtn').addEventListener('click', () => {
-    fetch('/api/led')
+// Gestion du bouton "Envoyer Uptime"
+document.getElementById('uptimeBtn').addEventListener('click', () => {
+    // On récupère la valeur affichée ou une variable
+    //const currentUptime = timeLeft; // Ou toute autre donnée numérique
+	
+    fetch(`/api/get_uptime?valeur=${currentUptime}`)
         .then(response => response.json())
         .then(data => {
-            // On affiche le résultat dans ton champ responseField
-            const field = document.getElementById('responseField');
-            field.innerText = "La LED est maintenant : " + data.status;
-            
-            // Optionnel : changer la couleur du bouton selon l'état
-            const btn = document.getElementById('actionBtn');
-            if(data.status === "ON") {
-                btn.style.backgroundColor = "#4CAF50"; // Vert
-            } else {
-                btn.style.backgroundColor = "#f44336"; // Rouge
-            }
+            document.getElementById('responseField').innerText = 
+                "Serveur a reçu l'uptime : " + data.recu;
         })
-        .catch(err => console.error("Erreur LED :", err));
+        .catch(err => console.error("Erreur Flash :", err));
 });
 
+function triggerGPIO() {
+    fetch('/api/piloter_gpio')
+        .then(response => response.text())
+        .then(txt => {
+            document.getElementById('responseField').innerText = "Action : " + txt;
+        });
+}
+
+// 6. Initialisation au chargement
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // Lancement des timers
+    refreshData();
+    setInterval(updateTimer, 1000);
+});
+
+// Synchronisation de l'heure au chargement réel
+window.onload = function() {
+    if(!isLocal) {
+        let now = Math.floor(Date.now() / 1000);
+        fetch(`/api/sync_time?t=${now}`);
+    }
+};
