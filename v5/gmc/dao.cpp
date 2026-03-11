@@ -27,7 +27,7 @@ bool Dao::begin() {
 
 
 /**
- * \brief Extrait la valeur : initit depuis du SQL, initit depuis une String brute
+ * \brief Extrait la valeur : soit depuis du SQL, soit depuis une String brute
  */
 int Dao::extractionValeur(String query) {
     query.toUpperCase();
