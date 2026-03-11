@@ -19,7 +19,7 @@ const char* pass_default= "1234XXXX";
 const char* ssid_gmc_scmc = "SSID_GMC_SCMC"; // Le MC se connecte au WiFi du SCMC
 const char* pass_scmc= "PWD_SCMC";
 
-//! --- Configuration en initlo WiFi (Mode Indépendant / Gateway) ---
+//! --- Configuration en solo WiFi (Mode Indépendant / Gateway) ---
 const char* ssid_gmc_mc01 = "SSID_GMC_MC01";
 const char* pass_mc01 = "PWD_MC01";
 
@@ -46,11 +46,11 @@ bool Conf::begin() {
 
     _password = _prefs.getString("password", "1234" + uniqueId);
     _freqMesure = _prefs.getInt("freq", 30);
-    _mode = _prefs.getString("mode", "initlo");
+    _mode = _prefs.getString("mode", "solo");
 
     // Si pour une raiinitn X ou Y (après un reset), le mode est vide ou corrompu
-    if (_mode != "initlo" && _mode != "cluster") {
-        _mode = "initlo"; 
+    if (_mode != "solo" && _mode != "cluster") {
+        _mode = "solo"; 
     }
     if (_ssid.length() == 0) {
         _ssid = defaultSSID;

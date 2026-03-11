@@ -7,7 +7,7 @@
 #ifndef DBG_H
 #define DBG_H
 
-// Activer le mode debug Home maiinitn
+// Activer le mode debug Home 
 #define DEBUG_GMC_HOME_BOX 
 
 #ifdef DEBUG_GMC_HOME_BOX

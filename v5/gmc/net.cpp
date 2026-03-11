@@ -344,6 +344,10 @@ bool Net::handleFileRead(String path) {
 *      SOLO    : "SSID_GMC_MC01" et password "PWD_MC01" sur 192.168.4.1
 *      CLUSTER : "SSID_GMC_SCMC" et password "PWD_SCMC" sur 192.168.4.xx (10, 11, 12...)
 
+ * CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
+    wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
+    allez sur : http://192.168.4.1/config
+
     EN DEBUG : voir le fichier initurce "dbg.h"
     ex tests en meme temps sur http://192.168.1.48/ (home freebox)
 */
@@ -352,7 +356,7 @@ bool Net::handleFileRead(String path) {
 void Net::setupNetwork() {
     Serial.println("\n--- Configuration Réseau Dynamique ---");
     
-    if (_conf->getMode() == "initlo") { 
+    if (_conf->getMode() == "solo") { 
         Serial.printf("Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
         
         // 1. Nettoyage complet pour repartir sur une base saine

@@ -32,7 +32,7 @@
 * @details mode d'emploi serveur Web
 CONFIGURATION DU MODE RESEAU :
          - Module en réseau étoile   AVEC SCMC
-         - Module en initlo            SANS SCMC
+         - Module en solo            SANS SCMC
 
  * CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
     wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
@@ -201,7 +201,7 @@ void detectResetConf() {
         // Relâché avant les 5s
         isPressing = false;
         // Restaurer couleur de veille
-        if (conf->getMode() == "initlo") setLED(30, 5, 0);
+        if (conf->getMode() == "solo") setLED(30, 5, 0);
         else setLED(0, 0, 30);
     }
 }
@@ -228,7 +228,7 @@ void simulMesures() {
         }
         
         delay(100); // Petit flash
-        if (conf->getMode() == "initlo") setLED(30, 5, 0);
+        if (conf->getMode() == "solo") setLED(30, 5, 0);
         else setLED(0, 0, 30);
     }
 }
