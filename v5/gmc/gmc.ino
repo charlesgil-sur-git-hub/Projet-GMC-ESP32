@@ -16,7 +16,7 @@
                ! vérifiez dossier "arduino_littlefs_upload" dans ...user/.arduinoIDE/plugins
                (ESP8266LittleFS-2.6.0.zip par exemple)
 
-        - serveur BD : wrapper Dao pourencapsuler les requetes SQL
+        - serveur BD : wrapper Dao pour encapsuler les requetes SQL
            . Migration de SQLite vers Preferences (equivalent à la base de registre windows)
            . 120 cles/valeurs max pour 1 enreg / 30 s
 
@@ -92,19 +92,21 @@ Conf* conf=nullptr;
 Dao* dao = nullptr;
 Net* net = nullptr;
 
+
+
 /**
  * @brief : declaration des fonctions internes
  */
+void setLED(int, int, int); //! Simplication couleur LED
 bool syncDateTime();        //! Synchro Date Time
 void detectResetConf();     //! Reset parametres conf
 void simulMesures();        //! Simule une mesure par freq
-void setLED(int, int, int); //! Simplifier les couleurs
 void stopSetup(String);     //! Stopper setup si erreurs
 
 
 void setup() {
-    //! --- ÉTAPE 1 led orange : CONF ---
-    setLED(128, 40, 0); delay(1000); // Orange
+    //! --- ÉTAPE 1 led oransge : CONF ---
+    setLED("orange"); delay(1000); 
     Serial.begin(115200);
     Serial.println("\nDemarrage Programme GMC-ESP32");
 
@@ -122,7 +124,7 @@ void setup() {
 
     //! --- ÉTAPE 2 led jaune : SYNC DATE ---
     Serial.println("syncDateTime ..."); 
-    setLED(255, 255, 0); delay(2000); // jaune
+    setLED("jaune"); delay(2000);
     if (syncDateTime())
         Serial.println("Sync Horloge ESP32 ... OK");
     else
@@ -131,7 +133,7 @@ void setup() {
 
     //! --- ÉTAPE 3 led gris : DAO ---
     Serial.println("Dao ...");
-    setLED(206, 206, 206); delay(2000); // gris
+    setLED("gris"); delay(2000);
     dao = new Dao("/littlefs/gmc.db");
     if (dao->begin())
         Serial.println("Dao ... OK");
@@ -140,7 +142,7 @@ void setup() {
 
     // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
     Serial.println("Système Réseau & Web ...");
-    setLED(128, 0, 128); delay(2000); // Violet
+    setLED("violet"); delay(2000);
     net = new Net(webServer, conf);
     if (net->begin()) {
         net->setupNetwork(); 
@@ -153,7 +155,7 @@ void setup() {
     }
 
     // --- FIN : PRÊT ---
-    setLED(0, 128, 0); // Vert
+    setLED("vert"); 
 }
 
 
@@ -190,19 +192,18 @@ void detectResetConf() {
         unsigned long duration = millis() - buttonPressTime;
         
         if (duration > 5000) {
-            setLED(255, 0, 0); // Rouge Fixe
+            setLED("rouge");
             conf->factoryReset(); 
         } else if (duration > 1000) {
             // Feedback visuel : clignotement
-            if ((millis() / 100) % 2) setLED(255, 0, 0); 
-            else setLED(0, 0, 0);
+            if ((millis() / 100) % 2) setLED("rouge"); 
+            else setLED("blanc");
         }
     } else if (isPressing) {
         // Relâché avant les 5s
         isPressing = false;
         // Restaurer couleur de veille
-        if (conf->getMode() == "solo") setLED(30, 5, 0);
-        else setLED(0, 0, 30);
+        setLED("vert"); // Vert
     }
 }
 
@@ -218,18 +219,14 @@ void simulMesures() {
     if (millis() - lastUpdate >= intervalle) { 
         lastUpdate = millis();
         
-        setLED(0, 255, 0); // Flash vie
+        // petit Flash vie
+        setLED("blanc");delay(100);setLED("orange");delay(200);setLED("vert");
         
         // Simulation de mesure
         int val = random(180, 260);
-        
         if(dao->accederTableMesure_ecrireUneMesure(val)) {
            Serial.printf("Mesure simulee : %d\n", val);
         }
-        
-        delay(100); // Petit flash
-        if (conf->getMode() == "solo") setLED(30, 5, 0);
-        else setLED(0, 0, 30);
     }
 }
 
@@ -239,6 +236,25 @@ void simulMesures() {
 void setLED(int r, int g, int b) {
    neopixelWrite(RGB_BUILTIN, (uint8_t)r, (uint8_t)g, (uint8_t)b);
 }
+/** @brief : Simplication couleur LED
+    vert(0,128,0) vert bouteille( 9, 106, 9) 
+*/
+void setLED(String color) {
+    if (!color.compareTo("")) neopixelWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge
+    else if (!color.compareTo("rouge")) neopixelWrite(RGB_BUILTIN, 255, 0, 0); 
+    else if (!color.compareTo("orange")) neopixelWrite(RGB_BUILTIN, 30, 5, 0); 
+    else if (!color.compareTo("vert")) neopixelWrite(RGB_BUILTIN, 9, 106, 9); 
+    else if (!color.compareTo("blanc")) neopixelWrite(RGB_BUILTIN, 0, 0, 0); 
+    else if (!color.compareTo("jaune")) neopixelWrite(RGB_BUILTIN, 255, 255, 0); 
+    else if (!color.compareTo("gris")) neopixelWrite(RGB_BUILTIN, 206, 206, 206); 
+    else if (!color.compareTo("violet")) neopixelWrite(RGB_BUILTIN, 128, 0, 128); 
+    else if (!color.compareTo("noir")) neopixelWrite(RGB_BUILTIN, 30, 5, 0); 
+    else neopixelWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge 
+}
+
+
+
+
 
 /**
 @brief fonction de sécurité dans le setup 
