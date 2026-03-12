@@ -20,26 +20,26 @@ Net::Net(WebServer& webServer, Conf* config)
     : _webServer(webServer), _conf(config) {}
 
 bool Net::begin() {
-   Serial.println("Tentative de montage de LittleFS...");
+   Serial.println("\tTentative de montage de LittleFS :");
     
     // Le 'true' ici est vital : il force le formatage si l'image est mal lue
     if (!LittleFS.begin(true)) {
-        Serial.println("❌ Erreur : Impossible de monter LittleFS");
+        Serial.println("\t\t❌ Erreur : Impossible de monter LittleFS");
         return false;        
     }
-    Serial.print("Total LittleFS: ");
+    Serial.print("\t\tTotal LittleFS: ");
     Serial.println(LittleFS.totalBytes());
-    Serial.print("Used LittleFS: ");
+    Serial.print("\t\tUsed LittleFS: ");
     Serial.println(LittleFS.usedBytes());
 
-    Serial.println("✅ LittleFS monté avec succès !");
+    Serial.println("\tLittleFS monté avec succès OK !");
     
     // Scan des fichiers
     File root = LittleFS.open("/");
     File file = root.openNextFile();
-    if(!file) Serial.println("   (Le système de fichiers est vide)");
+    if(!file) Serial.println("\t❌ (Le système de fichiers est vide)");
     while(file){
-        Serial.printf("   Fichier: %s, Taille: %u octets\n", file.name(), file.size());
+        Serial.printf("\t❌ Fichier: %s, Taille: %u octets\n", file.name(), file.size());
         file = root.openNextFile();
     }
     return true;
@@ -354,10 +354,10 @@ bool Net::handleFileRead(String path) {
 
 
 void Net::setupNetwork() {
-    Serial.println("\n--- Configuration Réseau Dynamique ---");
+    Serial.println("\n\t--- Configuration Réseau Dynamique ---");
     
     if (_conf->getMode() == "solo") { 
-        Serial.printf("Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
+        Serial.printf("\t\tMode SOLO - AP: %s\n", _conf->getSSID().c_str());
         
         // 1. Nettoyage complet pour repartir sur une base saine
         WiFi.softAPdisconnect(true); 
@@ -367,7 +367,7 @@ void Net::setupNetwork() {
         #ifdef DEBUG_GMC_HOME_BOX 
             // MODE HYBRIDE : On cherche la BOX d'abord
             WiFi.mode(WIFI_AP_STA); 
-            Serial.println(">>> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
+            Serial.println("\t\t\t>>> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
             
             /*  //! les détails du scan de tous les réseaux 
             Serial.println("Scan complet des réseaux en cours...");
@@ -382,12 +382,12 @@ void Net::setupNetwork() {
             }
             */
 
-            Serial.printf("Connexion box : %s ...", DEBUG_GMC_HOME_BOX_SSID);
+            Serial.printf("\t\tConnexion box : %s ...", DEBUG_GMC_HOME_BOX_SSID);
 
-            Serial.println("--- Diagnostics WiFi ---");
-            Serial.print("Adresse MAC Station : "); Serial.println(WiFi.macAddress());
-            Serial.print("Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
-            Serial.printf("Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
+            Serial.println("\t\t--- Diagnostics WiFi --- : ");
+            Serial.print("\t\t\t- Adresse MAC Station : "); Serial.println(WiFi.macAddress());
+            Serial.print("\t\t\t- Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
+            Serial.printf("\t\t\t- Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
 
             // On force la désactivation du mode économie (aide à l'auth)
             WiFi.setSleep(false); 
@@ -402,13 +402,13 @@ void Net::setupNetwork() {
             }
 
             if(WiFi.status() == WL_CONNECTED) {
-                Serial.println("\n[OK] Connecté à la Box !");
+                Serial.println("\n\t[OK] Connecté à la Box !");
                 //Serial.print("IP Station : "); Serial.println(WiFi.localIP());
-                Serial.println("   RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
-                Serial.println("========================================");
-                Serial.printf(" 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
-                Serial.printf(" 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
-                Serial.println("========================================\n");
+                Serial.println("\t\t   RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
+                Serial.println("\t\t========================================");
+                Serial.printf("\t\t 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
+                Serial.printf("\t\t 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
+                Serial.println("\t\t========================================\n");
 
             } else {
                 Serial.println("\n[ERREUR] Box introuvable ou mauvais mot de passe.");
@@ -427,15 +427,15 @@ void Net::setupNetwork() {
         const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
 
         if (WiFi.softAP(_conf->getSSID().c_str(), passStr)) {
-            Serial.print("Point d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
+            Serial.print("\t\tPoint d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
         } else {
-            Serial.println("ERREUR : Échec création AP.");
+            Serial.println("\t\tERREUR : Échec création AP.");
             haltSystem(); 
         }
 
     } else {
         // --- MODE CLUSTER ---
-        Serial.printf("Mode CLUSTER - Connexion à: %s\n", _conf->getSSID().c_str());
+        Serial.printf("\t\tMode CLUSTER - Connexion à: %s\n", _conf->getSSID().c_str());
         WiFi.mode(WIFI_STA);
         WiFi.begin(_conf->getSSID().c_str(), _conf->getPassword().c_str());
         
@@ -445,10 +445,10 @@ void Net::setupNetwork() {
         }
 
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("\n[ERREUR] Impossible de joindre le Cluster.");
+            Serial.println("\n\t\t[ERREUR] Impossible de joindre le Cluster.");
             haltSystem();
         }
-        Serial.println("\n[OK] Connecté au Cluster !");
+        Serial.println("\n\t\t[OK] Connecté au Cluster !");
     }
 }
 

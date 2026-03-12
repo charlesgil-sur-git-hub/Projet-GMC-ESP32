@@ -111,47 +111,47 @@ void setup() {
     Serial.println("\nDemarrage Programme GMC-ESP32");
 
     //! conf : parametres
-    Serial.println("conf ..."); 
+    Serial.print("conf ..."); 
     conf = new Conf();
     conf->begin();
     if (conf->begin())
-        Serial.println("conf ... OK");
+        Serial.println("✅");
     else
-        stopSetup("Echec conf");
+        stopSetup("Erreur : conf");
     //! conf : reset (Bouton BOOT 5s)
     pinMode(0, INPUT_PULLUP);
     delay(1000);
 
     //! --- ÉTAPE 2 led jaune : SYNC DATE ---
-    Serial.println("syncDateTime ..."); 
+    Serial.print("syncDateTime ..."); 
     setLED("jaune"); delay(2000);
     if (syncDateTime())
-        Serial.println("Sync Horloge ESP32 ... OK");
+        Serial.println("✅");
     else
-        stopSetup("Echec Sync Horloge ESP32");
+        stopSetup("Erreur : Sync Horloge ESP32");
     
 
     //! --- ÉTAPE 3 led gris : DAO ---
-    Serial.println("Dao ...");
+    Serial.print("Dao ...");
     setLED("gris"); delay(2000);
     dao = new Dao("/littlefs/gmc.db");
     if (dao->begin())
-        Serial.println("Dao ... OK");
+        Serial.println("✅");
     else
-        stopSetup("Echec Dao");
+        stopSetup("Erreur : Dao");
 
     // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
-    Serial.println("Système Réseau & Web ...");
+    Serial.println("Système Réseau & Web - NET :");
     setLED("violet"); delay(2000);
     net = new Net(webServer, conf);
     if (net->begin()) {
         net->setupNetwork(); 
         net->setupRoutes();
         webServer.begin();
-        Serial.println("Système Réseau & Web ... OK");
+        Serial.println("Système Réseau & Web - NET ✅");
     } else {
         // SI LE FILESYSTEM NE MONTE PAS, ON ARRÊTE TOUT ICI !
-        stopSetup("Echec Système Réseau & Web");
+        stopSetup("Erreur : Système Réseau & Web");
     }
 
     // --- FIN : PRÊT ---
@@ -186,7 +186,7 @@ void detectResetConf() {
         if (!isPressing) {
             buttonPressTime = millis();
             isPressing = true;
-            Serial.println("Bouton BOOT détecté...");
+            Serial.println("🚨 Bouton BOOT détecté...");
         }
 
         unsigned long duration = millis() - buttonPressTime;
@@ -225,7 +225,7 @@ void simulMesures() {
         // Simulation de mesure
         int val = random(180, 260);
         if(dao->accederTableMesure_ecrireUneMesure(val)) {
-           Serial.printf("Mesure simulee : %d\n", val);
+           Serial.printf("🚀 Mesure simulee : %d\n", val);
         }
     }
 }
@@ -261,18 +261,17 @@ void setLED(String color) {
     allume la LED en rouge et bloque tout
 */
 void stopSetup(String message) {
-    setLED(255, 0, 0); // Passage immédiat au ROUGE
+    setLED("rouge"); 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.print("!!! ERREUR CRITIQUE : ");
+    Serial.print("❌ ERREUR CRITIQUE : ");
     Serial.println(message);
     Serial.println("!!! SYSTÈME HALTÉ (BOUCLE INFINIE)");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     
     while(true) {
         // Optionnel : faire clignoter la LED rouge pour attirer l'attention
-        setLED(255, 0, 0); delay(500);
-        setLED(0, 0, 0);   delay(500);
-        Serial.println("❌ mode panic ...");
+        setLED("rouge"); delay(500); setLED("blanc");  delay(500);
+        Serial.println("  ==> mode panic ...");
     }
 }
 
@@ -281,7 +280,6 @@ void stopSetup(String message) {
  */
 bool syncDateTime() {
     struct tm tm_compile;
-	Serial.println("Synchronisation horloge ... ");  
     // On récupère les macros de compilation __DATE__ et __TIME__
     // Format : "Feb  6 2026" et "12:34:56"
     if (strptime(__DATE__ " " __TIME__, "%b %d %Y %H:%M:%S", &tm_compile)) {
