@@ -108,7 +108,7 @@ void setup() {
     //! --- ÉTAPE 1 led oransge : CONF ---
     setLED("orange"); delay(1000); 
     Serial.begin(115200);
-    Serial.println("\nDemarrage Programme GMC-ESP32");
+    Serial.println("\n\n🚀 Demarrage Programme GMC-ESP32");
 
     //! conf : parametres
     Serial.print("conf ..."); 
@@ -155,6 +155,7 @@ void setup() {
     }
 
     // --- FIN : PRÊT ---
+    Serial.println("");
     setLED("vert"); 
 }
 

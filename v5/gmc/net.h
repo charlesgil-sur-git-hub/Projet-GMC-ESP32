@@ -39,6 +39,10 @@ private:
     
     bool handleFileRead(String path);
     String getContentType(String filename);
+
+    //! Connexion par Box
+    String boxSsid=String("");
+    String boxPwd=String("");
 };
 
 #endif

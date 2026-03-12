@@ -20,28 +20,30 @@ Net::Net(WebServer& webServer, Conf* config)
     : _webServer(webServer), _conf(config) {}
 
 bool Net::begin() {
-   Serial.println("\tTentative de montage de LittleFS :");
+   Serial.print("\t->> Montage LittleFS :");
     
     // Le 'true' ici est vital : il force le formatage si l'image est mal lue
     if (!LittleFS.begin(true)) {
-        Serial.println("\t\t❌ Erreur : Impossible de monter LittleFS");
+        Serial.println("❌ Erreur FS");
         return false;        
     }
-    Serial.print("\t\tTotal LittleFS: ");
-    Serial.println(LittleFS.totalBytes());
-    Serial.print("\t\tUsed LittleFS: ");
-    Serial.println(LittleFS.usedBytes());
-
-    Serial.println("\tLittleFS monté avec succès OK !");
+    Serial.print("Total ["); Serial.print(LittleFS.totalBytes()); Serial.print("]");
+    Serial.print(" - Used ["); Serial.print(LittleFS.usedBytes());  Serial.print("]");
+    Serial.println(" OK ✅");
     
     // Scan des fichiers
     File root = LittleFS.open("/");
     File file = root.openNextFile();
-    if(!file) Serial.println("\t❌ (Le système de fichiers est vide)");
+    if(!file) {
+        Serial.println("\t ❌ système de fichiers vide");
+        return false; 
+    }
+    Serial.print("\t\t->>> Fichiers :");
     while(file){
-        Serial.printf("\t❌ Fichier: %s, Taille: %u octets\n", file.name(), file.size());
+        Serial.printf("{%s}[%u] ", file.name(), file.size());
         file = root.openNextFile();
     }
+    Serial.println("✅");
     return true;
 }
 
@@ -354,20 +356,51 @@ bool Net::handleFileRead(String path) {
 
 
 void Net::setupNetwork() {
-    Serial.println("\n\t--- Configuration Réseau Dynamique ---");
+    Serial.println("\t->> Réseau Dynamique");
     
     if (_conf->getMode() == "solo") { 
-        Serial.printf("\t\tMode SOLO - AP: %s\n", _conf->getSSID().c_str());
+        Serial.printf("\t\t-Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
         
         // 1. Nettoyage complet pour repartir sur une base saine
         WiFi.softAPdisconnect(true); 
         WiFi.disconnect(true);
         delay(500); // On laisse un peu plus de temps à la puce
 
-        #ifdef DEBUG_GMC_HOME_BOX 
+        //! en mode hybride ?
+        this->boxSsid="";
+        this->boxPwd="";
+        #ifdef DEBUG_GMC_BOX_HYBRIDE
             // MODE HYBRIDE : On cherche la BOX d'abord
             WiFi.mode(WIFI_AP_STA); 
-            Serial.println("\t\t\t>>> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
+            Serial.println("\t\t\t> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
+
+            #ifdef DEBUG_GMC_S9_PARTAGE 
+                this->boxSsid = DEBUG_GMC_S9_PARTAGE_SSID;
+                Serial.printf("\t\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid);
+                // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
+                while (!Serial);
+                while (Serial.available() == 0);
+                // Une fois qu'il y a des données, on les lit
+                this->boxPwd = Serial.readStringUntil('\n');
+                this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
+            #endif    
+            #ifdef DEBUG_GMC_LABOINFO_BOX 
+                this->boxSsid = DEBUG_GMC_LABOINFO_BOX_SSID;
+                this->boxPwd = DEBUG_GMC_LABOINFO_BOX_PWD;
+            #endif
+            #ifdef DEBUG_GMC_HOME_BOX 
+                    this->boxSsid = DEBUG_GMC_HOME_BOX_SSID;
+                      this->boxSsid = DEBUG_GMC_LABOINFO_BOX_SSID;
+                    Serial.printf("\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid);
+                    // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
+                    while (!Serial);
+                    while (Serial.available() == 0);
+                    // Une fois qu'il y a des données, on les lit
+                    this->boxPwd = Serial.readStringUntil('\n');
+                    this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
+            #endif
+            Serial.println("");
+           
             
             /*  //! les détails du scan de tous les réseaux 
             Serial.println("Scan complet des réseaux en cours...");
@@ -382,17 +415,15 @@ void Net::setupNetwork() {
             }
             */
 
-            Serial.printf("\t\tConnexion box : %s ...", DEBUG_GMC_HOME_BOX_SSID);
-
-            Serial.println("\t\t--- Diagnostics WiFi --- : ");
-            Serial.print("\t\t\t- Adresse MAC Station : "); Serial.println(WiFi.macAddress());
-            Serial.print("\t\t\t- Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
-            Serial.printf("\t\t\t- Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
+            Serial.printf("\t\t\t\t.Connexion box : [%s] ...\n", this->boxSsid);
+            Serial.print("\t\t\t\t.Adresse MAC Station : "); Serial.println(WiFi.macAddress());
+            Serial.print("\t\t\t\t.Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
+            Serial.printf("\t\t\t\t.Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
 
             // On force la désactivation du mode économie (aide à l'auth)
             WiFi.setSleep(false); 
             WiFi.setMinSecurity(WIFI_AUTH_WPA2_PSK);
-            WiFi.begin(DEBUG_GMC_HOME_BOX_SSID, DEBUG_GMC_HOME_BOX_PWD);
+            WiFi.begin(this->boxSsid, this->boxPwd);
             
             int retry = 0;
             while (WiFi.status() != WL_CONNECTED && retry < 30) { 
@@ -402,16 +433,16 @@ void Net::setupNetwork() {
             }
 
             if(WiFi.status() == WL_CONNECTED) {
-                Serial.println("\n\t[OK] Connecté à la Box !");
+                Serial.println("\t\t->>Connecté à la Box ✅");
                 //Serial.print("IP Station : "); Serial.println(WiFi.localIP());
-                Serial.println("\t\t   RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
-                Serial.println("\t\t========================================");
-                Serial.printf("\t\t 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
-                Serial.printf("\t\t 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
-                Serial.println("\t\t========================================\n");
+                Serial.println("\t\t\t. RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
+                Serial.println("\t\t\t.========================================");
+                Serial.printf("\t\t\t. 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
+                Serial.printf("\t\t\t. 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
+                Serial.println("\t\t\t.========================================");
 
             } else {
-                Serial.println("\n[ERREUR] Box introuvable ou mauvais mot de passe.");
+                Serial.println("\n❌ [ERREUR] Box introuvable ou mauvais mot de passe.");
                 haltSystem(); // On bloque en rouge
             }
         #else
@@ -427,9 +458,9 @@ void Net::setupNetwork() {
         const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
 
         if (WiFi.softAP(_conf->getSSID().c_str(), passStr)) {
-            Serial.print("\t\tPoint d'accès OK. IP : "); Serial.println(WiFi.softAPIP());
+            Serial.print("\tPoint d'accès OK. IP : "); Serial.print(WiFi.softAPIP()); Serial.println("✅");
         } else {
-            Serial.println("\t\tERREUR : Échec création AP.");
+            Serial.println("\t❌ ERREUR : Échec création AP.");
             haltSystem(); 
         }
 
@@ -445,10 +476,10 @@ void Net::setupNetwork() {
         }
 
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("\n\t\t[ERREUR] Impossible de joindre le Cluster.");
+            Serial.println("\t\t❌ [ERREUR] Impossible de joindre le Cluster.");
             haltSystem();
         }
-        Serial.println("\n\t\t[OK] Connecté au Cluster !");
+        Serial.println("\t\t[OK] Connecté au Cluster ✅");
     }
 }
 
