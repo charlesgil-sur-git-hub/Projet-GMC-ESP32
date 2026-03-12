@@ -375,30 +375,21 @@ void Net::setupNetwork() {
             Serial.println("\t\t\t> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
 
             #ifdef DEBUG_GMC_S9_PARTAGE 
-                this->boxSsid = DEBUG_GMC_S9_PARTAGE_SSID;
-                Serial.printf("\t\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid);
-                // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
-                while (!Serial);
-                while (Serial.available() == 0);
-                // Une fois qu'il y a des données, on les lit
-                this->boxPwd = Serial.readStringUntil('\n');
-                this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
+                this->boxSsid = String(DEBUG_GMC_S9_PARTAGE_SSID);
             #endif    
             #ifdef DEBUG_GMC_LABOINFO_BOX 
-                this->boxSsid = DEBUG_GMC_LABOINFO_BOX_SSID;
-                this->boxPwd = DEBUG_GMC_LABOINFO_BOX_PWD;
+                this->boxSsid = String(DEBUG_GMC_LABOINFO_BOX_SSID);
             #endif
             #ifdef DEBUG_GMC_HOME_BOX 
-                    this->boxSsid = DEBUG_GMC_HOME_BOX_SSID;
-                      this->boxSsid = DEBUG_GMC_LABOINFO_BOX_SSID;
-                    Serial.printf("\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid);
-                    // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
-                    while (!Serial);
-                    while (Serial.available() == 0);
-                    // Une fois qu'il y a des données, on les lit
-                    this->boxPwd = Serial.readStringUntil('\n');
-                    this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
+                this->boxSsid = String(DEBUG_GMC_HOME_BOX_SSID);
             #endif
+            Serial.printf("\t\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid.c_str());
+            // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
+            while (!Serial);
+            while (Serial.available() == 0);
+            // Une fois qu'il y a des données, on les lit
+            this->boxPwd = Serial.readStringUntil('\n');
+            this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
             Serial.println("");
            
             
@@ -426,14 +417,15 @@ void Net::setupNetwork() {
             WiFi.begin(this->boxSsid, this->boxPwd);
             
             int retry = 0;
+            Serial.printf("\t\t\t\t");
             while (WiFi.status() != WL_CONNECTED && retry < 30) { 
                 delay(500); 
-                Serial.print("."); 
+                Serial.print("... "); 
                 retry++; 
             }
 
             if(WiFi.status() == WL_CONNECTED) {
-                Serial.println("\t\t->>Connecté à la Box ✅");
+                Serial.println(" ->Connecté à la Box ✅");
                 //Serial.print("IP Station : "); Serial.println(WiFi.localIP());
                 Serial.println("\t\t\t. RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
                 Serial.println("\t\t\t.========================================");

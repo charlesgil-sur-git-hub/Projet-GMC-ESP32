@@ -254,9 +254,6 @@ void setLED(String color) {
 }
 
 
-
-
-
 /**
 @brief fonction de sécurité dans le setup 
     allume la LED en rouge et bloque tout
