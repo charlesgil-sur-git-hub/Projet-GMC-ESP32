@@ -28,10 +28,11 @@
 
 			<section class="action-section">
 				<button id="uptimeBtn" class="btn">Envoyer Uptime</button>
-				<button class="btn" onclick="triggerGPIO()">Piloter GPIO</button>
-				
+				<button class="btn" onclick="triggerGPIO('on')">Piloter GPIO (allumer)</button>
+			    	<button class="btn" style="background: #444;" onclick="triggerGPIO('off')">Piloter GPIO (Éteindre)</button>
 				<p id="responseField"></p>
 			</section>
+			
 		</main>
     </div>
     <script src="script.js"></script>

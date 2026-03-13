@@ -283,9 +283,38 @@ void Net::setupRoutes() {
 
     // [ROUTE PILOTER] : Action générique sur GPIO
     _webServer.on("/api/piloter_gpio", HTTP_GET, [this](){
-        Serial.println("Action spécifique sur GPIO demandée par le Web");
+        Serial.println("\nAction spécifique sur GPIO demandée par le Web");
+        //digitalWrite(40, HIGH); // Rouge
         // Exemple d'action : digitalWrite(4, HIGH);
         _webServer.send(200, "text/plain", "GPIO Actionne avec succes");
+    });
+
+    _webServer.on("/api/piloter_gpio/semaphore_on", HTTP_GET, [this](){
+        Serial.println("\nAction spécifique sur GPIO demandée par le Web");
+        Serial.println("🚨 Allumage du Sémaphore !");
+    
+        // On allume les 3 LEDs (adapte les numéros de pins selon ton câblage)
+        digitalWrite(40, HIGH); // Rouge
+        digitalWrite(41, HIGH); // Jaune
+        digitalWrite(42, HIGH); // Vert
+       
+
+        
+        // Exemple d'action : digitalWrite(4, HIGH);
+        _webServer.send(200, "text/plain", "GPIO Actionne avec succes  Sémaphore Allumé");
+    });
+
+    _webServer.on("/api/piloter_gpio/semaphore_off", HTTP_GET, [this](){
+        Serial.println("\nAction spécifique sur GPIO demandée par le Web");
+        Serial.println("🚨 Eteint le Sémaphore !");
+    
+        // On eteint les 3 LEDs (adapte les numéros de pins selon ton câblage)
+        digitalWrite(40, LOW); // Rouge
+        digitalWrite(41, LOW); // Jaune
+        digitalWrite(42, LOW); // Vert
+        
+        // Exemple d'action : digitalWrite(4, HIGH);
+        _webServer.send(200, "text/plain", "GPIO Actionne avec succes  Sémaphore eteint");
     });
 
     // [ROUTE SYNC] : Reçoit l'heure du navigateur au chargement

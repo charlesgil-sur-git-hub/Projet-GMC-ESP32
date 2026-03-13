@@ -154,6 +154,9 @@ void setup() {
         stopSetup("Erreur : Système Réseau & Web");
     }
 
+    //! Pilotage GPIO : test avec 3 leds semaphore
+    pinMode(40, OUTPUT); pinMode(41, OUTPUT); pinMode(42, OUTPUT);
+
     // --- FIN : PRÊT ---
     Serial.println("");
     setLED("vert"); 
@@ -285,7 +288,7 @@ bool syncDateTime() {
         struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         //Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
-        return true;
+     cg   return true;
     }
 
     return false;
