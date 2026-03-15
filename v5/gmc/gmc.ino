@@ -288,7 +288,7 @@ bool syncDateTime() {
         struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         //Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
-     cg   return true;
+        return true;
     }
 
     return false;

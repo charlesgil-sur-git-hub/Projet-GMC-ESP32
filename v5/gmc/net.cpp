@@ -225,7 +225,7 @@ void Net::setupRoutes() {
             _webServer.send(404, "text/plain", "index.html introuvable");
         }
     });
-
+ 
     _webServer.on("/config", HTTP_GET, [this]() {
         handleFileRead("/config.html");
     });
@@ -250,6 +250,64 @@ void Net::setupRoutes() {
 
         doc["uptime"] = millis() / 1000;
         
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
+    });
+
+    // [ROUTE HISTORY CLIENT] : Appelée par le programme externe pour la collecte
+    _webServer.on("/api/history_client", HTTP_GET, [this]() {
+        // On utilise un document un peu plus grand car on va envoyer 120 objets
+        JsonDocument doc; 
+        
+        // 1. Récupération des 120 dernières mesures via le DAO
+        // On suppose que ta méthode lireDesMesures accepte le nombre en paramètre
+        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(120);
+        
+        // 2. Création d'un tableau JSON
+        JsonArray array = doc.to<JsonArray>();
+
+        if (!mesures.empty()) {
+            for (const auto& m : mesures) {
+                JsonObject obj = array.add<JsonObject>();
+                obj["temp"] = m.getValeurTdc();
+                obj["date"] = m.getDateCreation();
+            }
+        }
+
+        // 3. Envoi au client distant
+        String response;
+        serializeJson(doc, response);
+
+        //! deblocage securite CORS :  Le navigateur protège l'utilisateur contre les scripts malveillants 
+        // qui pourraient voler des données sur d'autres serveurs.
+        // L'exception : En mettant *, l'ESP32 dit au navigateur : 
+        // "C'est bon, je suis un objet public, tout le monde peut lire mes données".
+        _webServer.sendHeader("Access-Control-Allow-Origin", "*");
+
+        _webServer.send(200, "application/json", response);
+    });
+
+     // [ROUTE HISTORY] : Pour recuperer les 10 dernieres mesures
+    _webServer.on("/api/history_10", HTTP_GET, [this]() {
+        JsonDocument doc; 
+        
+        // 1. Récupération des 120 dernières mesures via le DAO
+        // On suppose que ta méthode lireDesMesures accepte le nombre en paramètre
+        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(120);
+        
+        // 2. Création d'un tableau JSON
+        JsonArray array = doc.to<JsonArray>();
+
+        if (!mesures.empty()) {
+            for (int i=0; i<10; i++) {
+                JsonObject obj = array.add<JsonObject>();
+                 doc["temp"] = mesures[i].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
+                doc["date"] = mesures[i].getDateCreation();
+            }
+        }
+
+        // 3. Envoi au client distant
         String response;
         serializeJson(doc, response);
         _webServer.send(200, "application/json", response);
@@ -335,6 +393,9 @@ void Net::setupRoutes() {
             _webServer.send(404, "text/plain", "404: Fichier non trouve");
         }
     });
+
+
+    
 }
 
 
@@ -479,7 +540,8 @@ void Net::setupNetwork() {
         const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
 
         if (WiFi.softAP(_conf->getSSID().c_str(), passStr)) {
-            Serial.print("\tPoint d'accès OK. IP : "); Serial.print(WiFi.softAPIP()); Serial.println("✅");
+            Serial.print("\tPoint d'accès OK. IP : "); 
+            Serial.print(WiFi.softAPIP()); Serial.println("✅");
         } else {
             Serial.println("\t❌ ERREUR : Échec création AP.");
             haltSystem(); 

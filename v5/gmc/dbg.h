@@ -16,9 +16,9 @@
 
 
 // Activer le mode debug  
-//#define DEBUG_GMC_HOME_BOX 
+#define DEBUG_GMC_HOME_BOX 
 //#define DEBUG_GMC_LABOINFO_BOX 
-#define DEBUG_GMC_S9_PARTAGE 
+//#define DEBUG_GMC_S9_PARTAGE 
 
 
 #ifdef DEBUG_GMC_HOME_BOX
