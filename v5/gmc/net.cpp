@@ -279,10 +279,8 @@ void Net::setupRoutes() {
         String response;
         serializeJson(doc, response);
 
-        //! deblocage securite CORS :  Le navigateur protège l'utilisateur contre les scripts malveillants 
-        // qui pourraient voler des données sur d'autres serveurs.
-        // L'exception : En mettant *, l'ESP32 dit au navigateur : 
-        // "C'est bon, je suis un objet public, tout le monde peut lire mes données".
+        //! deblocage securite CORS :  protection scripts malveillants 
+        // exception * ==> objet public, tout le monde peut lire mes données".
         _webServer.sendHeader("Access-Control-Allow-Origin", "*");
 
         _webServer.send(200, "application/json", response);
@@ -302,14 +300,17 @@ void Net::setupRoutes() {
         if (!mesures.empty()) {
             for (int i=0; i<10; i++) {
                 JsonObject obj = array.add<JsonObject>();
-                 doc["temp"] = mesures[i].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
-                doc["date"] = mesures[i].getDateCreation();
+                obj["temp"] = mesures[i].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
+                obj["date"] = mesures[i].getDateCreation();
             }
         }
 
         // 3. Envoi au client distant
         String response;
         serializeJson(doc, response);
+        //! deblocage securite CORS :  protection scripts malveillants 
+        // exception * ==> objet public, tout le monde peut lire mes données".
+        _webServer.sendHeader("Access-Control-Allow-Origin", "*");
         _webServer.send(200, "application/json", response);
     });
 
