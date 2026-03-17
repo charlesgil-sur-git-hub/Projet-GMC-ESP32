@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Récolteur de Données GMC</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="collect-box">
+        <h2>Archives ESP32 S3</h2>
+        <button onclick="fetchHistory()">Récupérer l'historique</button>
+        
+        <div class="result-area">
+            <label for="mesures-select">Historique (120 dernières) :</label>
+            <select id="mesures-select" size="10">
+                <option>-- Cliquez sur récupérer --</option>
+            </select>
+        </div>
+        <p id="status"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
