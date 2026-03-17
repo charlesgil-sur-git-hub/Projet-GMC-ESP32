@@ -384,6 +384,44 @@ bool Net::handleFileRead(String path) {
 */
 
 
+
+
+/**
+    Côté ESP32 : Le code Client TCP
+*/
+bool Net::envoyerDonneeRFID(String rfidID) {
+    WiFiClient client;
+
+    //! connexion au serveur sur le meme reseau 
+    if (!client.connect(_conf->getServerIP().c_str(), _conf->getServerPort())) {
+        Serial.printf("Erreur: Serveur IP [%s] injoignable", _conf->getServerIP().c_str());
+        return false;
+    }
+
+    // --- ÉTAPE 1 : START ---
+    client.print("SEC_MSG_START\n");
+    String resp = client.readStringUntil('\n');
+    resp.trim();
+    if (resp != "SEC_MSG_START_OK") return false;
+
+    // --- ÉTAPE 2 : DATA ---
+    // Format : SEC_MSG_DATE_AAAAMMJJ_ZONE_X_RFID_NNNN
+    String msg = "SEC_MSG_DATE_20240520_ZONE_1_RFID_" + rfidID + "\n";
+    client.print(msg);
+    resp = client.readStringUntil('\n');
+    resp.trim();
+    if (resp != "SEC_MSG_OK") return false;
+
+    // --- ÉTAPE 3 : STOP ---
+    client.print("SEC_MSG_STOP\n");
+    resp = client.readStringUntil('\n');
+    resp.trim();
+    
+    client.stop();
+    return (resp == "SEC_MSG_STOP_OK");
+}
+
+
 void Net::setupNetwork() {
     Serial.println("\t->> Réseau Dynamique");
     

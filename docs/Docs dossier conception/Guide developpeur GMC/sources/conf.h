@@ -31,9 +31,6 @@ private:
     int _freqMesure;
     String _mode;
 
-    String _serverIP; 
-    int _serverPort;
-
 public:
     Conf();
     
@@ -41,16 +38,13 @@ public:
     bool begin();
     
     // Sauvegarde les données
-    void save(String ssid, String pass, int freq, String mode, String, int);
+    void save(String ssid, String pass, int freq, String mode);
     
     // Getters (pour lire les valeurs)
     String getSSID() const { return _ssid; }
     String getPassword() const { return _password; }
     int getFreq() const { return _freqMesure; }
     String getMode() const { return _mode; }
-
-    String getServerIP() const { return _serverIP; }
-    int getServerPort() const { return _serverPort; }
     
     // Réinitialisation d'usine
     void factoryReset();

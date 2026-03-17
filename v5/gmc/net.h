@@ -29,6 +29,11 @@ public:
     void setupRoutes();
     void haltSystem(); // bloquer le système en cas d'erreur
 
+    /**
+        Côté ESP32 : Le code Client TCP
+    */
+    bool envoyerDonneeRFID(String rfidID);
+
 private:
     WebServer& _webServer;
     Conf* _conf; // On stocke une référence à la config
@@ -43,6 +48,10 @@ private:
     //! Connexion par Box
     String boxSsid=String("");
     String boxPwd=String("");
+
+    //! Serveur IP
+    String serverIP=String(""); 
+    int serverPort;
 };
 
 #endif

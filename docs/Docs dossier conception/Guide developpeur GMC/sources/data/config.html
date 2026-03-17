@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration GMC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f3; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #333; margin-top: 0; border-bottom: 2px solid #2196F3; padding-bottom: 10px; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #555; font-size: 0.9em; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .btn { background: #2196F3; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; margin-top: 25px; cursor: pointer; font-size: 1em; font-weight: bold; transition: background 0.3s; }
+        .btn:hover { background: #1976D2; }
+        .status { margin-top: 15px; font-size: 0.8em; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Configuration</h2>
+    <form id="configForm">
+        <label>Nom du WiFi (SSID) :</label>
+        <input type="text" id="ssid" name="ssid" required>
+
+        <label>Mot de passe (8 car. min) :</label>
+        <input type="password" id="pass" name="pass" placeholder="Laisser vide pour inchangé">
+
+        <label>Fréquence mesure (secondes) :</label>
+        <input type="number" id="freq" name="freq" min="1" max="3600">
+
+        <label>Mode de fonctionnement :</label>
+        <select id="mode" name="mode">
+            <option value="solo">Solo (Indépendant)</option>
+            <option value="cluster">Cluster (Réseau SCMC)</option>
+        </select>
+
+        <button type="submit" class="btn">Enregistrer & Redémarrer</button>
+    </form>
+    <div id="msg" class="status">Chargement des paramètres...</div>
+</div>
+
+<script>
+    // 1. Charger les données au démarrage
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/config')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ssid').value = data.ssid;
+                document.getElementById('freq').value = data.freq;
+                document.getElementById('mode').value = data.mode;
+                document.getElementById('msg').innerText = "Paramètres actuels chargés.";
+            })
+            .catch(err => {
+                document.getElementById('msg').innerText = "Erreur de chargement des données.";
+                console.error(err);
+            });
+    });
+
+    // 2. Envoyer les données lors du clic sur le bouton
+    document.getElementById('configForm').addEventListener('submit', (e) => {
+        e.preventDefault(); // Empêche le rechargement de la page
+        document.getElementById('msg').innerText = "Envoi en cours...";
+
+        const formData = new FormData(e.target);
+        
+        // On envoie en POST vers l'API
+        fetch('/api/config', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('msg').innerHTML = "<b>Succès !</b> Redémarrage de l'ESP32...<br>Reconnectez-vous au nouveau WiFi dans 10s.";
+        })
+        .catch(err => {
+            document.getElementById('msg').innerText = "Erreur lors de l'enregistrement.";
+        });
+    });
+</script>
+
+</body>
+</html>

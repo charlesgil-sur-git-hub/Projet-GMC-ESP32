@@ -238,22 +238,22 @@ void simulMesures() {
 * Fonction util pour simplifier les couleurs
 */
 void setLED(int r, int g, int b) {
-   neopixelWrite(RGB_BUILTIN, (uint8_t)r, (uint8_t)g, (uint8_t)b);
+   rgbLedWrite(RGB_BUILTIN, (uint8_t)r, (uint8_t)g, (uint8_t)b);
 }
 /** @brief : Simplication couleur LED
     vert(0,128,0) vert bouteille( 9, 106, 9) 
 */
 void setLED(String color) {
-    if (!color.compareTo("")) neopixelWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge
-    else if (!color.compareTo("rouge")) neopixelWrite(RGB_BUILTIN, 255, 0, 0); 
-    else if (!color.compareTo("orange")) neopixelWrite(RGB_BUILTIN, 30, 5, 0); 
-    else if (!color.compareTo("vert")) neopixelWrite(RGB_BUILTIN, 9, 106, 9); 
-    else if (!color.compareTo("blanc")) neopixelWrite(RGB_BUILTIN, 0, 0, 0); 
-    else if (!color.compareTo("jaune")) neopixelWrite(RGB_BUILTIN, 255, 255, 0); 
-    else if (!color.compareTo("gris")) neopixelWrite(RGB_BUILTIN, 206, 206, 206); 
-    else if (!color.compareTo("violet")) neopixelWrite(RGB_BUILTIN, 128, 0, 128); 
-    else if (!color.compareTo("noir")) neopixelWrite(RGB_BUILTIN, 30, 5, 0); 
-    else neopixelWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge 
+    if (!color.compareTo("")) rgbLedWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge
+    else if (!color.compareTo("rouge")) rgbLedWrite(RGB_BUILTIN, 255, 0, 0); 
+    else if (!color.compareTo("orange")) rgbLedWrite(RGB_BUILTIN, 30, 5, 0); 
+    else if (!color.compareTo("vert")) rgbLedWrite(RGB_BUILTIN, 9, 106, 9); 
+    else if (!color.compareTo("blanc")) rgbLedWrite(RGB_BUILTIN, 0, 0, 0); 
+    else if (!color.compareTo("jaune")) rgbLedWrite(RGB_BUILTIN, 255, 255, 0); 
+    else if (!color.compareTo("gris")) rgbLedWrite(RGB_BUILTIN, 206, 206, 206); 
+    else if (!color.compareTo("violet")) rgbLedWrite(RGB_BUILTIN, 128, 0, 128); 
+    else if (!color.compareTo("noir")) rgbLedWrite(RGB_BUILTIN, 30, 5, 0); 
+    else rgbLedWrite(RGB_BUILTIN, 255, 0, 0); // erreur rouge 
 }
 
 
@@ -288,7 +288,7 @@ bool syncDateTime() {
         struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         //Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
-     cg   return true;
+        return true;
     }
 
     return false;

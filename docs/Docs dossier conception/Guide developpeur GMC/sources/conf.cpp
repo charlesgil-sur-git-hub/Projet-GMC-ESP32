@@ -23,9 +23,6 @@ const char* pass_scmc= "PWD_SCMC";
 const char* ssid_gmc_mc01 = "SSID_GMC_MC01";
 const char* pass_mc01 = "PWD_MC01";
 
-//! -- Configuration serveur IP ---
-const char* IP = "192.168.1.XX"; // L'adresse de ton PC serveur
-const int Port = 8080;
 
 
 
@@ -42,17 +39,14 @@ bool Conf::begin() {
     String chipIdStr = uniqueId.substring(uniqueId.length() - 4);
     //String defaultSSID = "SSID_GMC_MC_" + uniqueId.substring(uniqueId.length() - 4);
     String defaultSSID = "SSID_GMC_PASS_1234" + uniqueId;
-
-       
+    
     // 2. On charge le SSID depuis les préférences, 
     // MAIS on passe notre identifiant unique comme valeur par défaut !
     _ssid = _prefs.getString("ssid", defaultSSID);
+
     _password = _prefs.getString("password", "1234" + uniqueId);
     _freqMesure = _prefs.getInt("freq", 30);
     _mode = _prefs.getString("mode", "solo");
-
-    _serverIP = _prefs.getString("serverIP", "192.168.43.179");
-    _serverPort = _prefs.getInt("serverPort", 8080);
 
     // Si pour une raiinitn X ou Y (après un reset), le mode est vide ou corrompu
     if (_mode != "solo" && _mode != "cluster") {
@@ -68,29 +62,21 @@ bool Conf::begin() {
         _freqMesure = 30;
     }
 
-    if (_serverIP.length() == 0) {
-        _serverIP = "xxx-xxx-xxx-xxx";
-    }
-     if (_serverPort == 0) {
-        _serverPort = 8080;
-    }
-
     _prefs.end();
 
     //! on Resauve pour si on a modifie
-    this->save(_ssid, _password, _freqMesure, _mode, _serverIP, _serverPort);
+    this->save(_ssid, _password, _freqMesure, _mode);
 
     return true;
 }
 
-void Conf::save(String ssid, String pass, int freq, String mode, String serverIP, int serverPort) {
+void Conf::save(String ssid, String pass, int freq, String mode) {
     _prefs.begin("settings", false); // Mode écriture
     
     _prefs.putString("ssid", ssid);
     _prefs.putString("password", pass);
     _prefs.putInt("freq", freq);
-    _prefs.putString("serverIP", serverIP);
-    _prefs.putInt("serverPort", serverPort);
+    _prefs.putString("mode", mode);
     
     _prefs.end();
     
@@ -99,8 +85,6 @@ void Conf::save(String ssid, String pass, int freq, String mode, String serverIP
     _password = pass;
     _freqMesure = freq;
     _mode = mode;
-    _serverIP = serverIP;
-    _serverPort = serverPort;
 }
 
 void Conf::factoryReset() {
