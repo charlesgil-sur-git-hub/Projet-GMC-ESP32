@@ -10,87 +10,104 @@
 #include "conf.h"
 
 
-//! --- DEFAUT  ---
-const char* ssid_default = "SSID_GMC_PASS_1234XXXX";
-const char* pass_default= "1234XXXX";
-
-
-//! --- Configuration en Réseau avec cluster  ---
-const char* ssid_gmc_scmc = "SSID_GMC_SCMC"; // Le MC se connecte au WiFi du SCMC
-const char* pass_scmc= "PWD_SCMC";
-
-//! --- Configuration en solo WiFi (Mode Indépendant / Gateway) ---
-const char* ssid_gmc_mc01 = "SSID_GMC_MC01";
-const char* pass_mc01 = "PWD_MC01";
-
-
-
-
 Conf::Conf() {}
 
 bool Conf::begin() {
-    _prefs.begin("settings", true); // Mode lecture seule
+    this->prefs.begin("settings", true); // Mode lecture seule
 
-    // 1. On récupère l'ID unique (6 derniers caractères de la MAC)
+    // 1. On récupère l'ID unique (MAC)
     //          par defaut : '1234XXXX'
     uint64_t chipId = ESP.getEfuseMac();
     String uniqueId = String((uint32_t)(chipId >> 32), HEX);
     uniqueId.toUpperCase();
-    String chipIdStr = uniqueId.substring(uniqueId.length() - 4);
+    //String chipIdStr = uniqueId.substring(uniqueId.length() - 4);
     //String defaultSSID = "SSID_GMC_MC_" + uniqueId.substring(uniqueId.length() - 4);
-    String defaultSSID = "SSID_GMC_PASS_1234" + uniqueId;
+    String defaultApSSID = "";
+    defaultApSSID += "SSID_GMC_PASS_1234";
+    defaultApSSID += uniqueId;
+
     
     // 2. On charge le SSID depuis les préférences, 
     // MAIS on passe notre identifiant unique comme valeur par défaut !
-    _ssid = _prefs.getString("ssid", defaultSSID);
+     this->boxSsid = prefs.getString("boxSsid", "ssid_box_a_renseigner");
+    this->boxPwd = prefs.getString("boxPwd", "pwd_box_a_renseigner");
 
-    _password = _prefs.getString("password", "1234" + uniqueId);
-    _freqMesure = _prefs.getInt("freq", 30);
-    _mode = _prefs.getString("mode", "solo");
+    /**
+      @brief URL en mode client sur un Cloud (type alwaysdata ou autre)
+    */    
+    this->boxCloudUrl = prefs.getString("boxCloudUrl", "http://btscielinfo.alwaysdata.net/cloud/index.php");
 
-    // Si pour une raiinitn X ou Y (après un reset), le mode est vide ou corrompu
-    if (_mode != "solo" && _mode != "cluster") {
-        _mode = "solo"; 
-    }
-    if (_ssid.length() == 0) {
-        _ssid = defaultSSID;
-    }
-    if (_password.length() == 0) {
-        _password = chipIdStr;
-    }
-    if (_freqMesure == 0) {
-        _freqMesure = 30;
-    }
+    this->apSsid = prefs.getString("apSsid", defaultApSSID);
+    this->apPwd = prefs.getString("apPwd", "1234" + uniqueId);
+   
+    this->frequenceDesMesures = prefs.getInt("frequenceDesMesures", 30);
+    this->modeSoloOuCluster = prefs.getString("modeSoloOuCluster", "modeSolo");
 
-    _prefs.end();
+
+    // Si pour une raison X ou Y (après un reset), les valeurs sont vides ou corrompues
+     if (this->boxSsid.length() < 8) 
+        this->boxSsid = "ssid_box_a_renseigner";
+    if (this->boxPwd.length() < 8 ) 
+        this->boxPwd = "pwd_box_a_renseigner";
+     if (this->boxCloudUrl.length() < 8 ) 
+        this->boxCloudUrl = "http://btscielinfo.alwaysdata.net/cloud/index.php";
+
+    if (this->apSsid.length() < 8) 
+        this->apSsid = defaultApSSID;
+    if (this->apPwd.length() < 8) 
+        this->apPwd = "1234" + uniqueId;
+   
+    
+    if (this->frequenceDesMesures == 0) 
+        this->frequenceDesMesures = 30;  //! Mesure ttes les 30 s
+    if (this->modeSoloOuCluster != "solo" && this->modeSoloOuCluster != "cluster") 
+        this->modeSoloOuCluster = "solo"; 
+    this->prefs.end();
 
     //! on Resauve pour si on a modifie
-    this->save(_ssid, _password, _freqMesure, _mode);
+    this->save (this->boxSsid, this->boxPwd, this->boxCloudUrl, 
+                    this->apSsid, this->apPwd, 
+                    this->frequenceDesMesures, this->modeSoloOuCluster);
 
     return true;
 }
 
-void Conf::save(String ssid, String pass, int freq, String mode) {
-    _prefs.begin("settings", false); // Mode écriture
+void Conf::save(String box_ssid, String box_pwd, String box_cloud_url,
+        String ap_ssid, String ap_pwd, 
+        int frequence_mesures, String mode_ou_cluster) {
+    this->prefs.begin("settings", false); // Mode écriture
     
-    _prefs.putString("ssid", ssid);
-    _prefs.putString("password", pass);
-    _prefs.putInt("freq", freq);
-    _prefs.putString("mode", mode);
+    this->prefs.putString("boxSsid", box_ssid);
+    this->prefs.putString("boxPwd", box_pwd);
+    this->prefs.putString("boxCloudUrl", box_cloud_url);
+
+    this->prefs.putString("apSsid", ap_ssid);
+    this->prefs.putString("apPwd", ap_pwd);
+  
+
+    this->prefs.putInt("frequenceDesMesures", frequence_mesures);
+    this->prefs.putString("modeSoloOuCluster", mode_ou_cluster);
     
-    _prefs.end();
+    this->prefs.end();
     
     // On met à jour les variables locales pour éviter de redémarrer si pas nécessaire
-    _ssid = ssid;
-    _password = pass;
-    _freqMesure = freq;
-    _mode = mode;
+    this->boxSsid = box_ssid;
+    this->boxPwd = box_pwd;
+    this->boxCloudUrl = box_cloud_url;
+   
+    this->apSsid = ap_ssid;
+    this->apPwd = ap_pwd;
+  
+    this->frequenceDesMesures = frequence_mesures;
+    this->modeSoloOuCluster = mode_ou_cluster;
+
+    
 }
 
 void Conf::factoryReset() {
-    _prefs.begin("settings", false);
-    _prefs.clear();
-    _prefs.end();
+    prefs.begin("settings", false);
+    prefs.clear();
+    prefs.end();
     Serial.println("Config effacée. Redémarrage...");
     delay(1000);
     ESP.restart();

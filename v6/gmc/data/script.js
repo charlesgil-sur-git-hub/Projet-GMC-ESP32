@@ -39,32 +39,7 @@ function displayData(data) {
 }
 
 // 4. Récupération des données (Fetch / API)
-/*function refreshData() {
-    const badge = document.getElementById('envBadge');
 
-    if (isLocal) {
-        // SIMULATION pour test sur PC
-        console.log("Mode Simulation");
-        const mockData = { temp: 215, date: "14:30", uptime: 0 };
-        displayData(mockData);
-        badge.innerText = "Mode Test : Local (PC)";
-        badge.style.backgroundColor = "#ff9800"; // Orange
-    } else {
-        // RÉEL : Appel à l'ESP32
-        fetch('/api/status')
-            .then(response => response.json())
-            .then(data => {
-                displayData(data);
-                badge.innerText = "ESP32 Connecté";
-                badge.style.backgroundColor = "#4CAF50"; // Vert
-            })
-            .catch(err => {
-                badge.innerText = "🔴 Déconnecté";
-                badge.style.backgroundColor = "#f44336"; // Rouge
-            });
-    }
-}
-*/
 
 function refreshData() {
     const badge = document.getElementById('envBadge');

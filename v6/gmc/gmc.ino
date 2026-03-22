@@ -5,7 +5,7 @@
 * 
 *
 *  @author :cgil - @2026
-*  @version : v5.0 - page web "interactive" 
+*  @version : v6.0 - Version avec Cloud URL en passant pas une box
 *  @details : gérer la communication bidirectionnelle entre le navigateur (JavaScript) et ton ESP32 (C++).
 *  @details : Utilisation de Conf pour supprimer les constantes en dur
             Reset usine si bouton BOOT pressé au démarrage
@@ -113,7 +113,6 @@ void setup() {
     //! conf : parametres
     Serial.print("conf ..."); 
     conf = new Conf();
-    conf->begin();
     if (conf->begin())
         Serial.println("✅");
     else
@@ -157,6 +156,9 @@ void setup() {
     //! Pilotage GPIO : test avec 3 leds semaphore
     pinMode(40, OUTPUT); pinMode(41, OUTPUT); pinMode(42, OUTPUT);
 
+    // --- Infos Reset Config ---
+     Serial.println("\n⚠️ Appui long 5s bouton boot en clignotant rouge pour reset config ⚠️\n");
+
     // --- FIN : PRÊT ---
     Serial.println("");
     setLED("vert"); 
@@ -173,6 +175,9 @@ void loop() {
 
     // 3. Gestion de l'échantillonnage des mesures
     simulMesures();
+
+    // 4. Gestion envoi data dans le cloud
+    net->gererEnvoiDataCloud();
 }
 
 
@@ -218,7 +223,7 @@ void simulMesures() {
     static unsigned long lastUpdate = 0;
     
     // On récupère dynamiquement la fréquence depuis la config
-    unsigned long intervalle = conf->getFreq() * 1000;
+    unsigned long intervalle = conf->getFrequenceMesures() * 1000;
 
     if (millis() - lastUpdate >= intervalle) { 
         lastUpdate = millis();
@@ -229,7 +234,7 @@ void simulMesures() {
         // Simulation de mesure
         int val = random(180, 260);
         if(dao->accederTableMesure_ecrireUneMesure(val)) {
-           Serial.printf("🚀 Mesure simulee : %d\n", val);
+           Serial.printf("🌡️ Mesure simulee : %d\n", val);
         }
     }
 }
@@ -288,7 +293,7 @@ bool syncDateTime() {
         struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         //Serial.println(">>> Horloge ESP32 calée sur l'heure du PC !");
-     cg   return true;
+        return true;
     }
 
     return false;

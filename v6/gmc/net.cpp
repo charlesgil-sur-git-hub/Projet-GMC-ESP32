@@ -5,10 +5,20 @@
  * @author  cgil 
  * @version 1.1 
  * @date    fev 2026
+
+  - serveur web : separation du code HTML, css dans /DATA // arborescence Web standard
+           . linux : utilisez le script 'upload_web.sh' après chaque MAJ
+           . windows : 'Ctrl+sh+p' lancez "Upload LittleFS" via l'IDE arduino 2.x
+               ! vérifiez dossier "arduino_littlefs_upload" dans ...user/.arduinoIDE/plugins
+               (ESP8266LittleFS-2.6.0.zip par exemple)
  */
+
+ 
 
 #include <WiFi.h>  
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
+
 
 #include "net.h"
 #include "dbg.h"
@@ -19,8 +29,67 @@ extern Dao* dao;
 Net::Net(WebServer& webServer, Conf* config) 
     : _webServer(webServer), _conf(config) {}
 
+
+/**
+    @brief : méthode pour envoyer la donnée
+*/
+void Net::sendToCloud(float valTemp, bool etatVoyant, String cloudUrl) {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+
+         Serial.print("☁️ Tentative d'envoi vers le cloud ["); Serial.print(cloudUrl); Serial.println("]...");
+        
+        // URL de ton nouveau dossier sur Alwaysdata
+        //http.begin("http://btscielinfo.alwaysdata.net/projet/index.php");
+        http.begin(cloudUrl);
+        http.addHeader("Content-Type", "application/json");
+
+        // On prépare le JSON
+        // ex: {"temp": 215, "voyant": true}
+        String json = "{";
+        json += "\"temp\":" + String(valTemp) + ",";
+        json += "\"voyant\":" + String(etatVoyant ? "true" : "false");
+        json += "}";
+
+        // Envoi du POST
+        int httpResponseCode = http.POST(json);
+
+        if (httpResponseCode > 0) {
+            Serial.print("✅ Cloud OK, code : ");
+            Serial.println(httpResponseCode);
+        } else {
+            Serial.print("❌ Erreur envoi Cloud : ");
+            Serial.println(httpResponseCode);
+        }
+        http.end();
+    }
+}
+
+
+void Net::gererEnvoiDataCloud() {
+    static unsigned long dernierEnvoi = 0;
+
+    // On utilise la valeur de frequences
+    unsigned long intervalle = this->_conf->getFrequenceMesures()*1000;
+    
+    if (millis() - dernierEnvoi >= intervalle) { 
+        dernierEnvoi = millis();
+
+        int derniereValTemp = 0;
+        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
+        if (!mesures.empty()) 
+            derniereValTemp = mesures[0].getValeurTdc();
+        //bool monEtat = digitalRead(PIN_ALERTE); // Exemple de booléen
+        bool monEtatVoyant = false;
+
+        // On utilise l'URL stockée dans les Prefs !
+        sendToCloud(derniereValTemp, monEtatVoyant, _conf->getBoxCloudUrl());
+    }
+}
+
+
 bool Net::begin() {
-   Serial.print("\t->> Montage LittleFS :");
+   Serial.print("\t🛠 Montage LittleFS :");
     
     // Le 'true' ici est vital : il force le formatage si l'image est mal lue
     if (!LittleFS.begin(true)) {
@@ -38,7 +107,7 @@ bool Net::begin() {
         Serial.println("\t ❌ système de fichiers vide");
         return false; 
     }
-    Serial.print("\t\t->>> Fichiers :");
+    Serial.print("\t\t.Fichiers :");
     while(file){
         Serial.printf("{%s}[%u] ", file.name(), file.size());
         file = root.openNextFile();
@@ -326,7 +395,62 @@ void Net::setupRoutes() {
             _webServer.send(200, "text/plain", "Heure synchronisee");
         }
     });
+    
 
+    // [ROUTE API CONFIG] : Envoie les réglages actuels au formulaire HTML
+    _webServer.on("/api/config", HTTP_GET, [this]() {
+        JsonDocument doc;
+        
+        // On remplit le JSON avec les valeurs de ton objet de config
+        doc["box_ssid"] = _conf->getBoxSSID();
+        doc["box_pwd"]  = _conf->getBoxPassword();
+        doc["box_cloud_url"]  = _conf->getBoxCloudUrl();
+        doc["ap_ssid"]  = _conf->getApSSID();
+        doc["ap_pwd"]   = _conf->getApPassword();
+        doc["freq"]     = _conf->getFrequenceMesures();
+        doc["mode"]     = _conf->getMode();
+
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
+        
+        Serial.println("📡 API : Données de config envoyées au navigateur");
+    });
+
+    // [ROUTE API SAVE] : Reçoit les réglages du formulaire et les sauvegarde
+    _webServer.on("/api/config", HTTP_POST, [this]() {
+        Serial.println("📥 Réception d'une nouvelle configuration...");
+
+        // On récupère les valeurs envoyées par le formulaire JS
+        String new_box_ssid = _webServer.arg("box_ssid");
+        String new_box_pwd  = _webServer.arg("box_pwd");
+        String new_box_cloud_url  = _webServer.arg("box_cloud_url");
+        String new_ap_ssid  = _webServer.arg("ap_ssid");
+        String new_ap_pwd   = _webServer.arg("ap_pwd");
+        int new_freq        = _webServer.arg("freq").toInt();
+        String new_mode   = _webServer.arg("mode");
+
+        // On met à jour l'objet de configuration (qui va écrire dans les Preferences)
+        // Note : Adapte le nom de ta méthode de sauvegarde si elle est différente
+        _conf->save(new_box_ssid, new_box_pwd, new_box_cloud_url, 
+                        new_ap_ssid, new_ap_pwd, 
+                        new_freq, new_mode);
+
+        // On répond au navigateur pour confirmer que c'est OK
+        JsonDocument doc;
+        doc["status"] = "success";
+        doc["message"] = "Configuration enregistrée. Redémarrage...";
+        
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
+
+        // On laisse un peu de temps pour que la réponse arrive au navigateur
+        // avant de couper le WiFi pour redémarrer.
+        Serial.println("💾 Sauvegarde effectuée. Reboot dans 2 secondes.");
+        delay(2000);
+        ESP.restart();
+    });
 
     // --- 3. GESTION DES FICHIERS STATIQUES & ERREURS ---
 
@@ -385,111 +509,88 @@ bool Net::handleFileRead(String path) {
 
 
 void Net::setupNetwork() {
-    Serial.println("\t->> Réseau Dynamique");
+    Serial.println("\t📅 Réseau Dynamique");
     
     if (_conf->getMode() == "solo") { 
-        Serial.printf("\t\t-Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
+        //Serial.printf("\t\t-Mode SOLO - AP: %s\n", _conf->getSSID().c_str());
         
-        // 1. Nettoyage complet pour repartir sur une base saine
+
+        /** 
+            1. Nettoyage complet pour repartir sur une base saine
+        */
         WiFi.softAPdisconnect(true); 
         WiFi.disconnect(true);
         delay(500); // On laisse un peu plus de temps à la puce
 
-        //! en mode hybride ?
-        this->boxSsid="";
-        this->boxPwd="";
-        #ifdef DEBUG_GMC_BOX_HYBRIDE
-            // MODE HYBRIDE : On cherche la BOX d'abord
-            WiFi.mode(WIFI_AP_STA); 
-            Serial.println("\t\t\t> DEBUG MODE ACTIVE : Tentative de connexion Box PRIORITAIRE");
+        /** 
+            2. On essaie d' etre toujours en mode hybride
+                sinon on laisse tomber et on garde que le mode AP
+        */ 
+        Serial.printf("\t\t.Tentative mode STA Hybride - AP et Box ...\n");
+        WiFi.mode(WIFI_AP_STA); 
 
-            #ifdef DEBUG_GMC_S9_PARTAGE 
-                this->boxSsid = String(DEBUG_GMC_S9_PARTAGE_SSID);
-            #endif    
-            #ifdef DEBUG_GMC_LABOINFO_BOX 
-                this->boxSsid = String(DEBUG_GMC_LABOINFO_BOX_SSID);
-            #endif
-            #ifdef DEBUG_GMC_HOME_BOX 
-                this->boxSsid = String(DEBUG_GMC_HOME_BOX_SSID);
-            #endif
-            Serial.printf("\t\t\t\t📥Saisir mot de passe du ssid[%s] ? ", this->boxSsid.c_str());
-            // Attendre que le port série soit prêt (utile pour certaines cartes comme Leonardo/Micro)
-            while (!Serial);
-            while (Serial.available() == 0);
-            // Une fois qu'il y a des données, on les lit
-            this->boxPwd = Serial.readStringUntil('\n');
-            this->boxPwd.trim(); // Nettoie les espaces/retours à la ligne
-            Serial.println("");
-           
-            
-            /*  //! les détails du scan de tous les réseaux 
-            Serial.println("Scan complet des réseaux en cours...");
-            int n = WiFi.scanNetworks();
-            Serial.printf("%d réseaux trouvés :\n", n);
-            if (n == 0) {
-                Serial.println(">>> AUCUN RÉSEAU TROUVÉ. Problème d'antenne ou de puissance ?");
-            } else {
-                for (int i = 0; i < n; ++i) {
-                    Serial.printf("%d: %s (Ch:%d, RSSI:%d dBm)\n", i + 1, WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i));
-                }
-            }
-            */
+        Serial.printf("\t\t.Connexion box : [%s] ...\n", this->_conf->getBoxSSID().c_str());
+        Serial.print("\t\t.Adresse MAC Station : "); Serial.println(WiFi.macAddress());
+        Serial.print("\t\t.Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
+        Serial.printf("\t\t.Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
 
-            Serial.printf("\t\t\t\t.Connexion box : [%s] ...\n", this->boxSsid);
-            Serial.print("\t\t\t\t.Adresse MAC Station : "); Serial.println(WiFi.macAddress());
-            Serial.print("\t\t\t\t.Adresse MAC SoftAP  : "); Serial.println(WiFi.softAPmacAddress());
-            Serial.printf("\t\t\t\t.Mode actuel : %d (1:STA, 2:AP, 3:BOTH)\n", WiFi.getMode());
+        // 2.1 : On force la désactivation du mode économie (aide à l'auth)
+        WiFi.setSleep(false); 
+        WiFi.setMinSecurity(WIFI_AUTH_WPA2_PSK);
+        WiFi.begin(this->_conf->getBoxSSID().c_str(), this->_conf->getBoxPassword().c_str());
+    
+        //! 2.2 : Tentative connexion a la Box locale pendant 10 secondes
+        int retry = 0;  Serial.printf("\t\t\t");
+        while (WiFi.status() != WL_CONNECTED && retry < 20) { 
+            delay(500); Serial.print("... "); retry++; 
+        }
 
-            // On force la désactivation du mode économie (aide à l'auth)
-            WiFi.setSleep(false); 
-            WiFi.setMinSecurity(WIFI_AUTH_WPA2_PSK);
-            WiFi.begin(this->boxSsid, this->boxPwd);
-            
-            int retry = 0;
-            Serial.printf("\t\t\t\t");
-            while (WiFi.status() != WL_CONNECTED && retry < 30) { 
-                delay(500); 
-                Serial.print("... "); 
-                retry++; 
-            }
-
-            if(WiFi.status() == WL_CONNECTED) {
+        //! 2.3 : Connexte Box ? Oui ou Non
+        if(WiFi.status() == WL_CONNECTED) {
                 Serial.println(" ->Connecté à la Box ✅");
-                //Serial.print("IP Station : "); Serial.println(WiFi.localIP());
-                Serial.println("\t\t\t. RÉSEAU ÉTABLI - RÉSUMÉ DES ACCÈS");
-                Serial.println("\t\t\t.========================================");
-                Serial.printf("\t\t\t. 🏠 MODE BOX (Station)    : http://%s\n", WiFi.localIP().toString().c_str());
-                Serial.printf("\t\t\t. 📡 MODE DIRECT (AP)      : http://%s\n", WiFi.softAPIP().toString().c_str());
-                Serial.println("\t\t\t.========================================");
+                Serial.printf("\t🏠 Box : %s\n", WiFi.localIP().toString().c_str());
+                Serial.print("\t\t.Cloud URL : ["); Serial.print(this->_conf->getBoxCloudUrl()); Serial.println("]");
+        }
 
-            } else {
-                Serial.println("\n❌ [ERREUR] Box introuvable ou mauvais mot de passe.");
-                haltSystem(); // On bloque en rouge
-            }
-        #else
-            // MODE NORMAL : Uniquement Point d'accès
-            WiFi.mode(WIFI_AP); 
-        #endif
+        //! Box impossible ou pas configuree
+        //! Pour configurer : 192.168.4.1/config
+        if(WiFi.status() != WL_CONNECTED) {
+            Serial.println("\n\t\t Pas de Box possible !. Mode Hybride abandonné");
+            Serial.println("\t\t⚠️ Changer la config avec '192.168.4.1/config'");
+            
+            
+            //! MODE NORMAL : Uniquement Point d'accès
+                //! 1. Nettoyage complet pour repartir sur une base saine
+            
+            WiFi.softAPdisconnect(true); 
+            WiFi.disconnect(true);
+            delay(500); // On laisse un peu plus de temps à la puce
+
+            WiFi.mode(WIFI_AP); //Uniquement Point d'accès
+        }
         
+      
+        //! chp'tite pause...
         delay(200);
 
-        // --- 2. CONFIGURATION DU POINT D'ACCÈS (AP) ---
-        // On le fait après la connexion Box pour hériter du bon canal WiFi
-        String pass = _conf->getPassword();
-        const char* passStr = (pass.length() < 8) ? NULL : pass.c_str();
+        // --- CONFIGURATION DU POINT D'ACCÈS (AP) ---
+        // On le fait après la connexion Box (si box trouvee) pour hériter du bon canal WiFi
+        String password_AP = _conf->getApPassword();
+        const char* passord_AP_Str = (password_AP.length() < 8) ? NULL : password_AP.c_str();
 
-        if (WiFi.softAP(_conf->getSSID().c_str(), passStr)) {
-            Serial.print("\tPoint d'accès OK. IP : "); Serial.print(WiFi.softAPIP()); Serial.println("✅");
+        if (WiFi.softAP(_conf->getApSSID().c_str(), passord_AP_Str)) {
+            Serial.print("\t📡 Point d'accès IP : "); Serial.print(WiFi.softAPIP()); 
+            Serial.print(" - SSID ["); Serial.print(_conf->getApSSID()); Serial.print("] "); Serial.println("✅");
         } else {
-            Serial.println("\t❌ ERREUR : Échec création AP.");
+            Serial.println("\t❌ ERREUR : Échec création mode AP.");
             haltSystem(); 
         }
 
     } else {
         // --- MODE CLUSTER ---
-        Serial.printf("\t\tMode CLUSTER - Connexion à: %s\n", _conf->getSSID().c_str());
+        Serial.printf("\t\tMode CLUSTER - Connexion à: %s\n", _conf->getApSSID().c_str());
         WiFi.mode(WIFI_STA);
-        WiFi.begin(_conf->getSSID().c_str(), _conf->getPassword().c_str());
+        WiFi.begin(_conf->getApSSID().c_str(), _conf->getApPassword().c_str());
         
         int retry = 0;
         while (WiFi.status() != WL_CONNECTED && retry < 30) { 
@@ -503,6 +604,8 @@ void Net::setupNetwork() {
         Serial.println("\t\t[OK] Connecté au Cluster ✅");
     }
 }
+
+
 
 
 

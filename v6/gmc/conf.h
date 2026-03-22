@@ -25,11 +25,35 @@
  */
 class Conf {
 private:
-    Preferences _prefs;
-    String _ssid;
-    String _password;
-    int _freqMesure;
-    String _mode;
+    Preferences prefs;
+
+    /**
+      @brief : Parametres de connexion par Box en mode client
+       CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
+        wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
+       allez sur : http://192.168.4.1/config
+    */
+    String boxSsid;
+    String boxPwd;
+
+    //! URL en mode client sur un Cloud (type alwaysdata ou autre)
+    //!   ex : ""http://btscielinfo.alwaysdata.net/cloud/index.php" 
+    String boxCloudUrl;
+
+
+     /**
+      @brief : Parametres de connexion par AP en mode serveur
+      CONFIGURATION PREMIER LANCEMENT : voir le SSID du wifi et le Pwd est la fin du SSID
+        wifi : code SSID : "SSID_GMC_PASS_1234XXXX" , Pwd : "1234XXXX"
+       allez sur : http://192.168.4.1/config
+    */
+    String apSsid;
+    String apPwd;
+
+    /** @brief : params autres
+    */
+    int frequenceDesMesures;
+    String modeSoloOuCluster;
 
 public:
     Conf();
@@ -38,13 +62,20 @@ public:
     bool begin();
     
     // Sauvegarde les données
-    void save(String ssid, String pass, int freq, String mode);
+    void save (String boxSsid, String boxPassword, String boxClourdUrl, 
+                String apSsid, String apPassword, int freq, String mode);
     
-    // Getters (pour lire les valeurs)
-    String getSSID() const { return _ssid; }
-    String getPassword() const { return _password; }
-    int getFreq() const { return _freqMesure; }
-    String getMode() const { return _mode; }
+    // Connexions AP (serveur) et/ou Box (client)
+    
+    String getBoxSSID() const { return boxSsid; }
+    String getBoxPassword() const { return boxPwd; }
+    String getBoxCloudUrl() { return boxCloudUrl; }
+
+    String getApSSID() const { return apSsid; }
+    String getApPassword() const { return apPwd; }
+
+    int getFrequenceMesures() const { return frequenceDesMesures; }
+    String getMode() const { return modeSoloOuCluster; }
     
     // Réinitialisation d'usine
     void factoryReset();

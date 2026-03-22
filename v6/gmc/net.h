@@ -27,6 +27,9 @@ public:
     bool begin();
     void setupNetwork(); //! Wifi
     void setupRoutes();
+    void sendToCloud(float valTemp, bool etatVoyant, String cloudUrl);
+    void gererEnvoiDataCloud();
+
     void haltSystem(); // bloquer le système en cas d'erreur
 
 private:
@@ -40,9 +43,6 @@ private:
     bool handleFileRead(String path);
     String getContentType(String filename);
 
-    //! Connexion par Box
-    String boxSsid=String("");
-    String boxPwd=String("");
 };
 
 #endif

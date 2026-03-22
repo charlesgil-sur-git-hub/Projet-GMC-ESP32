@@ -16,7 +16,7 @@ async function fetchHistory() {
         select.innerHTML = "";
         
         if (donnees.length === 0) {
-            status.innerText = "Historique vide sur l'ESP32.";
+            status.innerText = "☕ Historique vide sur l'ESP32.";
             return;
         }
 
