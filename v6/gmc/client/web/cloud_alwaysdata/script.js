@@ -24,7 +24,7 @@ function refresh() {
                 etatLabel.innerText = "ÉTAT VOYANT : OUI (Alerte)";
                 etatLabel.style.color = "red";
             } else {
-                etatLabel.innerText = "ÉTAT : NON (Normal)";
+                etatLabel.innerText = "ÉTAT VOYANT : NON (Normal)";
                 etatLabel.style.color = "green";
             }
         })
