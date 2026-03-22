@@ -13,13 +13,8 @@
 #include <WebServer.h>
 #include <LittleFS.h>
 
-#include "dao.h" 
 #include "conf.h"
-#include "dbg.h"
 
-// On indique au compilateur que l'objet dao 
-// est défini dans le fichier principal
-extern Dao* dao; 
 
 class Net {
 public:

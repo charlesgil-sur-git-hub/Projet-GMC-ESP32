@@ -99,9 +99,30 @@ void Conf::save(String box_ssid, String box_pwd, String box_cloud_url,
     this->apPwd = ap_pwd;
   
     this->frequenceDesMesures = frequence_mesures;
-    this->modeSoloOuCluster = mode_ou_cluster;
+    this->modeSoloOuCluster = mode_ou_cluster; 
+}
 
-    
+// Pour enregistrer la température brute (ex: 215 pour 21.5°C)
+void Conf::saveDerniereMesure(int temp, bool alerte) {
+    prefs.begin("gmc_prefs", false);
+    prefs.putInt("last_temp", temp);
+    prefs.putBool("last_alerte", alerte);
+    prefs.end();
+}
+
+// Pour lire la température au démarrage ou pour l'affichage
+int Conf::getLastTemp() {
+    prefs.begin("gmc_prefs", true);
+    int t = prefs.getInt("last_temp", 0);
+    prefs.end();
+    return t;
+}
+
+bool Conf::getLastAlerte() {
+    prefs.begin("gmc_prefs", true);
+    bool a = prefs.getBool("last_alerte", false);
+    prefs.end();
+    return a;
 }
 
 void Conf::factoryReset() {

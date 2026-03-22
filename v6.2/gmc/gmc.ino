@@ -5,7 +5,7 @@
 * 
 *
 *  @author :cgil - @2026
-*  @version : v6.0 - Version avec Cloud URL en passant pas une box
+*  @version : v6.2 - Version simplifiee sans DAO
 *  @details : gérer la communication bidirectionnelle entre le navigateur (JavaScript) et ton ESP32 (C++).
 *  @details : Utilisation de Conf pour supprimer les constantes en dur
             Reset usine si bouton BOOT pressé au démarrage
@@ -69,9 +69,7 @@ CONFIGURATION DU MODE RESEAU :
 * @details Developpement : architecture
 	gmc.ino (Cœur)
 	conf.h/cpp (Réglages JSON)
-	dao.h/cpp (Gestion des mesures)
 	net.h/cpp (Serveur Web & WiFi)
-	dbg.h/cpp (Mode hybride et outils de test)
 *
 */
 
@@ -81,15 +79,11 @@ CONFIGURATION DU MODE RESEAU :
 
 #include "conf.h" 
 #include "net.h"
-#include "dao.h"
-#include "mesure.h"
-#include "dbg.h"
 
 //! Objets globaux via pointeurs
 WebServer webServer(80);
 
 Conf* conf=nullptr; 
-Dao* dao = nullptr;
 Net* net = nullptr;
 
 
@@ -130,14 +124,10 @@ void setup() {
         stopSetup("Erreur : Sync Horloge ESP32");
     
 
-    //! --- ÉTAPE 3 led gris : DAO ---
-    Serial.print("Dao ...");
-    setLED("gris"); delay(2000);
-    dao = new Dao("/littlefs/gmc.db");
-    if (dao->begin())
-        Serial.println("✅");
-    else
-        stopSetup("Erreur : Dao");
+    //! --- ÉTAPE 3 led gris : NO-DAO ---
+    Serial.println("⚠️ NO Dao ...✅");
+    setLED("gris"); delay(1000);
+    
 
     // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
     Serial.println("Système Réseau & Web - NET :");
@@ -231,11 +221,16 @@ void simulMesures() {
         // petit Flash vie
         setLED("blanc");delay(100);setLED("orange");delay(200);setLED("vert");
         
-        // Simulation de mesure
+        // Simulation de mesure 
         int val = random(180, 260);
-        if(dao->accederTableMesure_ecrireUneMesure(val)) {
-           Serial.printf("🌡️ Mesure simulee : %d\n", val);
-        }
+        //! Simulation alerte voyant FALSE
+        bool alerteVoyant=false;    
+        //! ecriture NO DAO
+        //if(dao->accederTableMesure_ecrireUneMesure(val)) {
+        // On sauvegarde directement dans les Preferences via l'objet Conf
+        conf->saveDerniereMesure(val, alerteVoyant);
+        Serial.printf("🌡️ Mesure simulee : %d", val); Serial.println("\tAlerte voyant Faux");
+        Serial.println("💾 Mesure sauvegardée dans les Prefs (NVS)");
     }
 }
 

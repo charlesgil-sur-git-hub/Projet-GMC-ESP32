@@ -77,6 +77,13 @@ public:
     int getFrequenceMesures() const { return frequenceDesMesures; }
     String getMode() const { return modeSoloOuCluster; }
     
+
+    //! NVS a la place de DAO
+    void saveDerniereMesure(int temp, bool alerte);
+    int getLastTemp();
+    bool getLastAlerte();
+
+
     // Réinitialisation d'usine
     void factoryReset();
 };

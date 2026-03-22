@@ -21,10 +21,7 @@
 
 
 #include "net.h"
-#include "dbg.h"
 
-// On n'oublie pas de dire que dao existe ailleurs
-extern Dao* dao; 
 
 Net::Net(WebServer& webServer, Conf* config) 
     : _webServer(webServer), _conf(config) {}
@@ -75,12 +72,9 @@ void Net::gererEnvoiDataCloud() {
     if (millis() - dernierEnvoi >= intervalle) { 
         dernierEnvoi = millis();
 
-        int derniereValTemp = 0;
-        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
-        if (!mesures.empty()) 
-            derniereValTemp = mesures[0].getValeurTdc();
+        int derniereValTemp = _conf->getLastTemp();
         //bool monEtat = digitalRead(PIN_ALERTE); // Exemple de booléen
-        bool monEtatVoyant = false;
+        bool monEtatVoyant = _conf->getLastAlerte();
 
         // On utilise l'URL stockée dans les Prefs !
         sendToCloud(derniereValTemp, monEtatVoyant, _conf->getBoxCloudUrl());
@@ -116,159 +110,7 @@ bool Net::begin() {
     return true;
 }
 
-/*void Net::setupRoutes() {
-    // --- 1. L'URL pour les HUMAINS ---
-    _webServer.on("/config", HTTP_GET, [this]() {
-        File file = LittleFS.open("/config.html", "r");
-        if (file) {
-            _webServer.streamFile(file, "text/html");
-            file.close();
-        } else {
-            _webServer.send(404, "text/plain", "Fichier config.html manquant");
-        }
-    });
 
-    // --- 2. L'URL pour la MACHINE (API) ---
-    // En GET : On envoie les données
-    _webServer.on("/api/config", HTTP_GET, [this]() {
-        String json = "{";
-        json += "\"ssid\":\"" + _conf->getSSID() + "\",";
-        json += "\"freq\":" + String(_conf->getFreq()) + ",";
-        json += "\"mode\":\"" + _conf->getMode() + "\"";
-        json += "}";
-        _webServer.send(200, "application/json", json);
-    });
-
-    // En POST : On reçoit et on enregistre
-    _webServer.on("/api/config", HTTP_POST, [this]() {
-        // Sauvegarde via les arguments du formulaire reçu
-        _conf->save(
-            _webServer.arg("ssid"),
-            _webServer.arg("pass"),
-            _webServer.arg("freq").toInt(),
-            _webServer.arg("mode")
-        );
-        
-        // On répond au JavaScript avant de couper la connexion
-        _webServer.send(200, "application/json", "{\"status\":\"success\"}");
-        
-        Serial.println("Config mise à jour. Redémarrage...");
-        delay(2000);
-        ESP.restart();
-    });
-    
-    // Route API JSON : On va chercher la      VRAIE dernière mesure !
-    _webServer.on("/api/status", HTTP_GET, [this]() {
-        JsonDocument doc; 
-        
-        // --- CONNEXION À LA DAO LIGHT ---
-        // On récupère la dernière mesure (la liste en contient une seule dans notre simulation)
-        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
-        
-        if (!mesures.empty()) {
-            doc["temp"] = mesures[0].getValeurTdc(); // Conversion tdc vers Celsius
-            doc["date"] = mesures[0].getDateCreation();
-            doc["id"]   = mesures[0].getIdMesure();
-        } else {
-            doc["temp"] = 0;
-            doc["msg"] = "Aucune donnée en base";
-        }
-
-        doc["led_status"] = "ACTIVE";
-        doc["uptime"] = millis() / 1000;
-        doc["mode"] = "PREFERENCES_MODE"; // Pour savoir qu'on ne tourne pas sur SQLite
-
-        String response;
-        serializeJson(doc, response);
-        _webServer.send(200, "application/json", response);
-    });
-
-    // Gestion des fichiers statiques (index.html, etc.)
-    _webServer.onNotFound([this]() {
-        if (!handleFileRead(_webServer.uri())) {
-            _webServer.send(404, "text/plain", "Fichier introuvable sur LittleFS");
-        }
-    });
-
-    //!synchroniserHorlogeAuSetup
-    _webServer.on("/api/sync_time", HTTP_GET, [this]() {
-        if (_webServer.hasArg("t")) {
-            time_t t = _webServer.arg("t").toInt();
-            struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
-            settimeofday(&tv, NULL); // L'ESP32 est maintenant pile à l'heure du PC !
-            _webServer.send(200, "text/plain", "OK");
-        }
-    });
-
-    _webServer.on("/api/history", HTTP_GET, [this]() {
-        // Utilisation d'un document assez large pour 120 mesures
-        JsonDocument doc; 
-        JsonArray history = doc.to<JsonArray>();
-        
-        // On demande les 120 dernières mesures au DAO
-        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(120);
-        
-        for (auto& m : mesures) {
-            JsonObject obj = history.add<JsonObject>();
-            obj["v"] = m.getValeurTdc() / 10.0; // La valeur
-            obj["t"] = m.getDateCreation();    // L'heure (HH:MM:SS)
-        }
-
-        String response;
-        serializeJson(doc, response);
-        _webServer.send(200, "application/json", response);
-    });
-    
-     // --- ROUTE POUR L'ACTION LED (Bouton 1) ---
-    _webServer.on("/api/flash", HTTP_GET, [this]() {
-         Serial.println("🚨 Action LED demandée !");
-        
-        // Ton code pour faire flasher la LED orange
-        // flashOrange(); 
-
-        // 1. Lire l'état actuel et l'inverser
-        int etatActuel = digitalRead(2); // On lit le GPIO 2
-        int nouvelEtat = !etatActuel;
-        digitalWrite(2, nouvelEtat);
-
-        // 2. Répondre au navigateur avec le nouvel état
-        JsonDocument doc;
-        doc["status"] = (nouvelEtat == HIGH) ? "ON" : "OFF";
-        
-        String response;
-        serializeJson(doc, response);
-        _webServer.send(200, "application/json", response);
-    });
-
-   
-
-    // --- ROUTE POUR LA TEMPÉRATURE ---
-    _webServer.on("/api/get_temp", HTTP_GET, [this](){
-        Serial.println("🌐 Requête reçue : /api/get_temp");
-
-        // 1. On récupère la vraie valeur (via ton DAO par exemple)
-        float t = 22.5; // Ici tu mettras : _dao->getLastTemp();
-        String h = "10:45"; // Ici : _base->getFormattedTime();
-
-        // 2. On prépare la réponse au format JSON (le langage du JS)
-        // On crée une chaîne : {"temp": 22.5, "heure": "10:45"}
-        String json = "{";
-        json += "\"temp\":" + String(t) + ",";
-        json += "\"heure\":\"" + h + "\"";
-        json += "}";
-
-        // 3. On envoie la réponse au navigateur
-        _webServer.send(200, "application/json", json);
-    });
-
-    _webServer.on("/api/piloter_gpio", HTTP_GET, [this](AsyncWebServerRequest *request){
-        Serial.println("🚨 Bouton  piloter_gpio !");
-
-        // Votre code C++ ici (ex: piloter le GPIO )
-        _webServer.send(200, "text/plain", "Action reçue !");
-    });
-}
-*/
 
 /**
  * @section GUIDE_PEDAGOGIQUE_V5
@@ -306,16 +148,18 @@ void Net::setupRoutes() {
     _webServer.on("/api/status", HTTP_GET, [this]() {
         JsonDocument doc; 
         
-        // Récupération de la dernière mesure via le DAO
-        std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
-        
+        // Récupération de la dernière mesure via Prefs (ppaslus de DAO : version light)
+        /*std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
         if (!mesures.empty()) {
             doc["temp"] = mesures[0].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
             doc["date"] = mesures[0].getDateCreation();
         } else {
             doc["temp"] = 0;
             doc["date"] = "--:--";
-        }
+        }*/
+        // On va chercher l'info directement dans les Preferences via l'objet Conf
+        doc["temp"] = _conf->getLastTemp(); 
+        doc["alerte"] = _conf->getLastAlerte();
 
         doc["uptime"] = millis() / 1000;
         
