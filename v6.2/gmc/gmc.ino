@@ -130,7 +130,7 @@ void setup() {
     
 
     // --- ÉTAPE 4 led violet : RÉSEAU & WEB (Le coeur du système) ---
-    Serial.println("Système Réseau & Web - NET :");
+    Serial.println("Système Réseau & Web - NET : 🔍");
     setLED("violet"); delay(2000);
     net = new Net(webServer, conf);
     if (net->begin()) {

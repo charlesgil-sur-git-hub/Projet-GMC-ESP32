@@ -21,10 +21,13 @@ bool Conf::begin() {
     String uniqueId = String((uint32_t)(chipId >> 32), HEX);
     uniqueId.toUpperCase();
     //String chipIdStr = uniqueId.substring(uniqueId.length() - 4);
+    String chipIdStr = uniqueId.substring(0, 4);
     //String defaultSSID = "SSID_GMC_MC_" + uniqueId.substring(uniqueId.length() - 4);
     String defaultApSSID = "";
     defaultApSSID += "SSID_GMC_PASS_1234";
-    defaultApSSID += uniqueId;
+    defaultApSSID += chipIdStr;
+    //Serial.print("\t_Dbg_chipIdStr["); Serial.print(chipIdStr); Serial.println("]");
+
 
     
     // 2. On charge le SSID depuis les préférences, 

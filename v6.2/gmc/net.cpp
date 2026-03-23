@@ -58,6 +58,7 @@ void Net::sendToCloud(float valTemp, bool etatVoyant, String cloudUrl) {
             Serial.print("❌ Erreur envoi Cloud : ");
             Serial.println(httpResponseCode);
         }
+        Serial.println();
         http.end();
     }
 }
@@ -148,15 +149,6 @@ void Net::setupRoutes() {
     _webServer.on("/api/status", HTTP_GET, [this]() {
         JsonDocument doc; 
         
-        // Récupération de la dernière mesure via Prefs (ppaslus de DAO : version light)
-        /*std::vector<Mesure> mesures = dao->accederTableMesure_lireDesMesures(1);
-        if (!mesures.empty()) {
-            doc["temp"] = mesures[0].getValeurTdc(); // Valeur brute (ex: 215 pour 21.5)
-            doc["date"] = mesures[0].getDateCreation();
-        } else {
-            doc["temp"] = 0;
-            doc["date"] = "--:--";
-        }*/
         // On va chercher l'info directement dans les Preferences via l'objet Conf
         doc["temp"] = _conf->getLastTemp(); 
         doc["alerte"] = _conf->getLastAlerte();
@@ -170,29 +162,25 @@ void Net::setupRoutes() {
 
    
 
-    // [ROUTE GET_UPTIME] :  Reçoit une valeur et répond
-    _webServer.on("/api/get_uptime", HTTP_GET, [this]() {
-        String message = "Aucune valeur";
-         Serial.print("/api/get_uptime...");
-        
-        // On vérifie si l'argument "valeur" est présent dans l'URL
-        if (_webServer.hasArg("valeur")) {
-            message = _webServer.arg("valeur");
-            Serial.print("📥 Valeur uptime reçue du Web : ");
-            Serial.println(message);
-            
-            // Exemple : on fait clignoter la LED selon la valeur reçue
-            // flashLED(message.toInt()); 
+   
+     // [ROUTE HISTORY] : 10 dernieres valeurs : Appelée par le programme externe pour la collecte
+    // [ROUTE HISTORY] : Pour afficher le graphique
+    _webServer.on("/api/history", HTTP_GET, [this]() {
+        // On utilise un Document un peu plus grand pour 120 valeurs
+        DynamicJsonDocument doc(4096); 
+        JsonArray data = doc.createNestedArray("valeurs");
+
+        // On remplit le JSON avec le tableau stocké en RAM (chargé des Prefs au boot)
+        for (int i = 0; i < 120; i++) {
+            //data.add(_conf->getHistorique()[i]);
         }
 
-        JsonDocument doc;
-        doc["status"] = "OK";
-        doc["recu"] = message; // On renvoie la valeur pour confirmation
-        
         String response;
         serializeJson(doc, response);
         _webServer.send(200, "application/json", response);
     });
+
+
 
     // [ROUTE PILOTER] : Action générique sur GPIO
     _webServer.on("/api/piloter_gpio", HTTP_GET, [this](){
@@ -210,8 +198,6 @@ void Net::setupRoutes() {
         digitalWrite(40, HIGH); // Rouge
         digitalWrite(41, HIGH); // Jaune
         digitalWrite(42, HIGH); // Vert
-       
-
         
         // Exemple d'action : digitalWrite(4, HIGH);
         _webServer.send(200, "text/plain", "GPIO Actionne avec succes  Sémaphore Allumé");
@@ -228,6 +214,27 @@ void Net::setupRoutes() {
         
         // Exemple d'action : digitalWrite(4, HIGH);
         _webServer.send(200, "text/plain", "GPIO Actionne avec succes  Sémaphore eteint");
+    });
+
+     // [ROUTE GET_UPTIME] :  Reçoit une valeur et répond
+    _webServer.on("/api/get_uptime", HTTP_GET, [this]() {
+        String message = "Aucune valeur";
+         Serial.print("/api/get_uptime...");
+        
+        // On vérifie si l'argument "valeur" est présent dans l'URL
+        if (_webServer.hasArg("valeur")) {
+            message = _webServer.arg("valeur");
+            Serial.print("📥 Valeur uptime reçue du Web : ");
+            Serial.println(message);
+            // Exemple : on fait clignoter la LED selon la valeur reçue
+            // flashLED(message.toInt()); 
+        }
+        JsonDocument doc;
+        doc["status"] = "OK";
+        doc["recu"] = message; // On renvoie la valeur pour confirmation
+        String response;
+        serializeJson(doc, response);
+        _webServer.send(200, "application/json", response);
     });
 
     // [ROUTE SYNC] : Reçoit l'heure du navigateur au chargement
@@ -363,7 +370,8 @@ void Net::setupNetwork() {
             1. Nettoyage complet pour repartir sur une base saine
         */
         WiFi.softAPdisconnect(true); 
-        WiFi.disconnect(true);
+        //WiFi.disconnect(true);
+        WiFi.disconnect(true, true); // Efface aussi les infos stockées en Flash        
         delay(500); // On laisse un peu plus de temps à la puce
 
         /** 
@@ -381,12 +389,17 @@ void Net::setupNetwork() {
         // 2.1 : On force la désactivation du mode économie (aide à l'auth)
         WiFi.setSleep(false); 
         WiFi.setMinSecurity(WIFI_AUTH_WPA2_PSK);
+         
+        //! 2.2 : Tentative connexion a la Box locale pendant 15 secondes
+        //if (1) Serial.print("\t⚠️ _DBG_ ⚠️  box_pwd ["); Serial.print(this->_conf->getBoxPassword().c_str()); Serial.print("]");
         WiFi.begin(this->_conf->getBoxSSID().c_str(), this->_conf->getBoxPassword().c_str());
-    
-        //! 2.2 : Tentative connexion a la Box locale pendant 10 secondes
         int retry = 0;  Serial.printf("\t\t\t");
-        while (WiFi.status() != WL_CONNECTED && retry < 20) { 
-            delay(500); Serial.print("... "); retry++; 
+        while (WiFi.status() != WL_CONNECTED && retry < 30) { 
+            delay(500); Serial.print("."); retry++; 
+        }
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.print(" Échec. Code d'erreur : "); Serial.println(WiFi.status()); 
+            // 1 = Pas de SSID trouvé, 4 = Échec de connexion, 6 = Mauvais mot de passe
         }
 
         //! 2.3 : Connexte Box ? Oui ou Non
