@@ -1,0 +1,11 @@
+select { 
+width: 100%; marbody { font-family: sans-serif; background: #f4f4f9; display: flex; justify-content: center; padding: 50px; }
+.collect-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 400px; }
+gin-top: 10px; padding: 5px; border: 1px solid #ccc; 
+}
+
+button 
+{ width: 100%; background: #2ecc71; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; }
+button:hover { background: #27ae60; 
+	}
+#status { font-size: 0.8em; color: #666; margin-top: 10px; }

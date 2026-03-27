@@ -1,0 +1,32 @@
+<!---
+	Côté Serveur (Alwaysdata) 
+	L'Affichage 
+	Ce fichier servira avoir la donnée envoyée 
+	par l'ESP32
+	
+-->
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Cloud GMC</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; }
+        .data-card { background: white; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 50px; shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .valeur { font-size: 3em; color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="data-card">
+         <h1>Dernière mesure Cloud</h1>
+        <div id="temp" class="valeur">--.- °C</div>
+        <div id="etat_voyant">--</div>
+        <p id="date">En attente de l'ESP32...</p>
+    </div>
+
+    <!-- ON APPELLE LE FICHIER EXTERNE ICI -->
+    <script src="script.js"></script>
+    
+</body>
+</html>
