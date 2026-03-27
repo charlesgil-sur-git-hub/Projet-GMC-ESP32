@@ -18,13 +18,8 @@
 
         - mini stockage de données avec Pref (nvs)
            . Migration de SQLite vers Preferences (equivalent à la base de registre windows)
-           . 120 cles/valeurs max pour 1 enreg / 30 s
-
-        - Mise en place d'un buffer circulaire de 120 mesures (1 heure de données).
-
-        - Synchronisation automatique de l'heure du navigateur vers l'ESP32.
-
-        - Release Pour Debug Wifi en mode Hybride
+           
+        - Voir Guide dév : https://btscielinfo.alwaysdata.net/docs/
 
 *
 * 
