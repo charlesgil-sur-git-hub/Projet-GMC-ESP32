@@ -16,7 +16,7 @@
                ! vérifiez dossier "arduino_littlefs_upload" dans ...user/.arduinoIDE/plugins
                (ESP8266LittleFS-2.6.0.zip par exemple)
 
-        - serveur BD : wrapper Dao pour encapsuler les requetes SQL
+        - mini stockage de données avec Pref (nvs)
            . Migration de SQLite vers Preferences (equivalent à la base de registre windows)
            . 120 cles/valeurs max pour 1 enreg / 30 s
 
